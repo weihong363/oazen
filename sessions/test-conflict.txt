@@ -1,0 +1,4 @@
+Prefer npm for legacy projects.
+Prefer pnpm for all frontend projects.
+Use npm install in this repository.
+Use pnpm install in this repository.

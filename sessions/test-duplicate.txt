@@ -1,0 +1,8 @@
+Prefer pnpm instead of npm for frontend repos.
+Prefer pnpm instead of npm in frontend projects.
+Use pnpm install before development.
+Run pnpm install before starting dev.
+Run pnpm typecheck before build.
+Run pnpm typecheck before building.
+Avoid editing generated files in dist folder.
+Avoid editing files inside dist directory.

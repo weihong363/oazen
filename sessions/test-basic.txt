@@ -1,0 +1,6 @@
+Prefer pnpm instead of npm in frontend repositories.
+Run pnpm install before local development.
+Run pnpm typecheck before building the project.
+Avoid editing files inside dist because they are generated.
+The root cause is missing environment variables in local build.
+We decided to keep Vite as the frontend bundler.

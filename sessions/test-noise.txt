@@ -1,0 +1,7 @@
+ok
+done
+this works
+try again
+error happened
+fix it
+this is random text without useful info

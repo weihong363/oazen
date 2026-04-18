@@ -1,0 +1,22 @@
+{
+  "name": "oazen",
+  "version": "0.1.0",
+  "description": "Local memory runtime for coding agents",
+  "type": "commonjs",
+  "bin": {
+    "oazen": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "commander": "^14.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.1",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

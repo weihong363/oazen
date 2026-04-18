@@ -1,0 +1,8 @@
+Prefer pnpm instead of npm for frontend repos.
+Run pnpm typecheck before build.
+Avoid editing generated files under dist.
+The root cause is missing env vars in local build.
+We decided to keep Vite for the frontend app.
+Prefer pnpm instead of npm in frontend projects.
+Run pnpm install before local development.
+Avoid editing generated files in dist output.
