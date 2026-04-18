@@ -1,0 +1,280 @@
+{
+  "version": "1",
+  "name": "project-scoped recall benchmark",
+  "workspaces": [
+    {
+      "id": "sleep-rank",
+      "path": "sleep-rank",
+      "kind": "repo"
+    },
+    {
+      "id": "gomoku",
+      "path": "gomoku",
+      "kind": "repo"
+    },
+    {
+      "id": "ai-workforce-sim",
+      "path": "ai-workforce-sim",
+      "kind": "repo"
+    },
+    {
+      "id": "copycatcher",
+      "path": "copycatcher",
+      "kind": "repo"
+    },
+    {
+      "id": "local-vault",
+      "path": "local-vault",
+      "kind": "project"
+    }
+  ],
+  "memories": [
+    {
+      "id": "global-verify",
+      "title": "Verification first",
+      "content": "Always rerun the exact failing verification command before claiming the task is done.",
+      "kind": "preference",
+      "scope": "global",
+      "layer": "core",
+      "strength": 0.95
+    },
+    {
+      "id": "sleep-share-flow",
+      "workspaceId": "sleep-rank",
+      "scope": "repo",
+      "title": "Sleep-rank share flow",
+      "content": "Prefer real WeChat share pathways over local fake invite selection when implementing sleep-rank invite flow.",
+      "kind": "workflow",
+      "layer": "fact"
+    },
+    {
+      "id": "sleep-history-rule",
+      "workspaceId": "sleep-rank",
+      "scope": "repo",
+      "title": "Sleep-rank history rule",
+      "content": "Sleep-rank history must only show completed challenges and cancelled records should be deleted instead of archived.",
+      "kind": "fact",
+      "layer": "fact"
+    },
+    {
+      "id": "sleep-engine-boundary",
+      "workspaceId": "sleep-rank",
+      "scope": "repo",
+      "title": "Sleep-rank engine boundary",
+      "content": "Keep engine logic independent from mini program page code so multi-user and share flows stay testable.",
+      "kind": "decision",
+      "layer": "core"
+    },
+    {
+      "id": "gomoku-privacy-chain",
+      "workspaceId": "gomoku",
+      "scope": "repo",
+      "title": "Gomoku privacy chain",
+      "content": "Gomoku auth is only ready after cloud read-back succeeds; privacy errors must stay distinct from user cancellation.",
+      "kind": "workflow",
+      "layer": "fact"
+    },
+    {
+      "id": "gomoku-home-regression",
+      "workspaceId": "gomoku",
+      "scope": "repo",
+      "title": "Gomoku home render regression",
+      "content": "Apparent home toggle bugs in gomoku can actually be render crashes in render/home-view.js.",
+      "kind": "fact",
+      "layer": "fact"
+    },
+    {
+      "id": "gomoku-session-auth-log",
+      "workspaceId": "gomoku",
+      "scope": "repo",
+      "title": "Gomoku auth session note",
+      "content": "The root cause was treating local login success as done before gomokuGetProfile read-back verified cloud persistence.",
+      "kind": "fact",
+      "layer": "session"
+    },
+    {
+      "id": "ai-selected-task",
+      "workspaceId": "ai-workforce-sim",
+      "scope": "repo",
+      "title": "Play page task switching",
+      "content": "selectedTaskId must survive rerenders on play.html so switching tasks does not reopen the wrong outcome state.",
+      "kind": "workflow",
+      "layer": "fact"
+    },
+    {
+      "id": "ai-route-copy",
+      "workspaceId": "ai-workforce-sim",
+      "scope": "repo",
+      "title": "Play route copy contract",
+      "content": "Update route tests to current copy instead of forcing stale View Outcome text back into runtime behavior.",
+      "kind": "fact",
+      "layer": "fact"
+    },
+    {
+      "id": "ai-session-outcome-log",
+      "workspaceId": "ai-workforce-sim",
+      "scope": "repo",
+      "title": "Outcome modal session note",
+      "content": "The root cause was result-modal.hidden getting lost during a refactor, which made the modal appear permanently visible.",
+      "kind": "fact",
+      "layer": "session"
+    },
+    {
+      "id": "copycatcher-token-auth",
+      "workspaceId": "copycatcher",
+      "scope": "repo",
+      "title": "Copycatcher token auth",
+      "content": "Treat backend token auth, report history, and blockchain ledger sync as one workflow and verify all three before calling the flow complete.",
+      "kind": "workflow",
+      "layer": "fact"
+    },
+    {
+      "id": "copycatcher-progress-doc",
+      "workspaceId": "copycatcher",
+      "scope": "repo",
+      "title": "Copycatcher PROGRESS consolidation",
+      "content": "Keep a single PROGRESS document so history, auth, similarity, and evidence-ledger changes do not drift across duplicate status files.",
+      "kind": "fact",
+      "layer": "fact"
+    },
+    {
+      "id": "copycatcher-session-ledger-log",
+      "workspaceId": "copycatcher",
+      "scope": "repo",
+      "title": "Ledger sync session note",
+      "content": "The root cause was report completion updating UI state without confirming the blockchain ledger write had succeeded.",
+      "kind": "fact",
+      "layer": "session"
+    },
+    {
+      "id": "local-summary-use-cases",
+      "workspaceId": "local-vault",
+      "scope": "project",
+      "title": "Local-vault SummaryUseCases",
+      "content": "Keep SummaryUseCases and rule_based_memory_runtime.dart isolated so the Hybrid Memory Runtime sidecar stays easy to delete or extend.",
+      "kind": "decision",
+      "layer": "core"
+    },
+    {
+      "id": "local-slm-cache",
+      "workspaceId": "local-vault",
+      "scope": "repo",
+      "title": "Local-vault slm_cache cleanup",
+      "content": "The MediaPipe cleanup renamed slm_cache consistently and the repo should not reintroduce the old cache naming anywhere else.",
+      "kind": "fact",
+      "layer": "fact"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "sleep-share",
+      "projectId": "sleep-rank",
+      "workspaceId": "sleep-rank",
+      "query": "Fix the WeChat invite flow and keep the engine layer testable.",
+      "relevantMemoryIds": [
+        "global-verify",
+        "sleep-share-flow",
+        "sleep-engine-boundary"
+      ],
+      "keyMemoryIds": [
+        "sleep-share-flow",
+        "sleep-engine-boundary"
+      ],
+      "limit": 3,
+      "targets": {
+        "minPrecision": 0.75,
+        "minCoverage": 1,
+        "maxContamination": 0,
+        "minTokenSaved": 1
+      }
+    },
+    {
+      "id": "gomoku-auth",
+      "projectId": "gomoku",
+      "workspaceId": "gomoku",
+      "query": "Debug the gomoku auth flow so privacy cancellation and cloud sync failures are not mixed together.",
+      "relevantMemoryIds": [
+        "global-verify",
+        "gomoku-privacy-chain",
+        "gomoku-session-auth-log"
+      ],
+      "keyMemoryIds": [
+        "gomoku-privacy-chain",
+        "gomoku-session-auth-log"
+      ],
+      "limit": 3,
+      "targets": {
+        "minPrecision": 0.66,
+        "minCoverage": 1,
+        "maxContamination": 0,
+        "minTokenSaved": 1
+      }
+    },
+    {
+      "id": "ai-play-route",
+      "projectId": "ai-workforce-sim",
+      "workspaceId": "ai-workforce-sim",
+      "query": "Fix play page task switching and the outcome modal without forcing old route copy back into the UI.",
+      "relevantMemoryIds": [
+        "global-verify",
+        "ai-selected-task",
+        "ai-route-copy",
+        "ai-session-outcome-log"
+      ],
+      "keyMemoryIds": [
+        "ai-selected-task",
+        "ai-route-copy"
+      ],
+      "limit": 3,
+      "targets": {
+        "minPrecision": 0.66,
+        "minCoverage": 1,
+        "maxContamination": 0,
+        "minTokenSaved": 1
+      }
+    },
+    {
+      "id": "copycatcher-ledger",
+      "projectId": "copycatcher",
+      "workspaceId": "copycatcher",
+      "query": "Repair copycatcher report history so token auth and blockchain ledger sync stay consistent.",
+      "relevantMemoryIds": [
+        "global-verify",
+        "copycatcher-token-auth",
+        "copycatcher-session-ledger-log"
+      ],
+      "keyMemoryIds": [
+        "copycatcher-token-auth",
+        "copycatcher-session-ledger-log"
+      ],
+      "limit": 3,
+      "targets": {
+        "minPrecision": 0.66,
+        "minCoverage": 1,
+        "maxContamination": 0,
+        "minTokenSaved": 1
+      }
+    },
+    {
+      "id": "local-vault-runtime",
+      "projectId": "local-vault",
+      "workspaceId": "local-vault",
+      "query": "Continue the Hybrid Memory Runtime work without letting the old slm_cache cleanup or repo-wide MediaPipe work blur the app-level SummaryUseCases direction.",
+      "relevantMemoryIds": [
+        "global-verify",
+        "local-summary-use-cases",
+        "local-slm-cache"
+      ],
+      "keyMemoryIds": [
+        "local-summary-use-cases"
+      ],
+      "limit": 2,
+      "targets": {
+        "minPrecision": 1,
+        "minCoverage": 1,
+        "maxContamination": 0,
+        "minTokenSaved": 1
+      }
+    }
+  ]
+}

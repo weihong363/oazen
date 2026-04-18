@@ -66,6 +66,10 @@ tmp/
 temp/
 *.tmp
 
+# Local-only test artifacts (must never be committed)
+test/fixtures/benchmark-reports/
+test/fixtures/private/
+
 # OS generated files
 Thumbs.db
 ehthumbs.db

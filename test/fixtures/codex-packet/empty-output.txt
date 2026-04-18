@@ -1,0 +1,14 @@
+<OAZEN_CONTEXT_PACKET version="1">
+task: Continue an empty project.
+cwd: /workspace/empty
+inferred_scope: repo
+repo: /workspace/empty
+project: /workspace/empty
+retrieved_candidates: 0
+selected_memories: 0
+selected_tokens: 0
+saved_vs_baseline: 18
+
+relevant_memories:
+- none
+</OAZEN_CONTEXT_PACKET>

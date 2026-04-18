@@ -1,8 +1,9 @@
 import crypto from "crypto";
-import { buildMemoryChange, buildMutationResult } from "./contracts";
-import { loadMemories, saveMemories } from "./memory-store";
-import { Memory, MemoryMutationResult } from "./types";
-import { normalizeText, overlapScore } from "./utils";
+import { detectMemoryConflicts } from "../core/conflicts";
+import { buildMemoryChange, buildMutationResult } from "../core/contracts";
+import { Memory, MemoryMutationResult } from "../core/types";
+import { normalizeText, overlapScore } from "../core/utils";
+import { withLockedMemories } from "../storage/memory-store";
 
 export function tryMergeMemory(existing: Memory, incoming: Memory): Memory | null {
   if (existing.kind !== incoming.kind) return null;
@@ -71,37 +72,39 @@ export function upsertMemory(
 }
 
 export async function mergeRelatedMemories(): Promise<MemoryMutationResult> {
-  const memories = await loadMemories();
-  const active = memories.filter((memory) => memory.status === "active");
-  const archivedIds = new Set<string>();
-  const changes = [];
+  return withLockedMemories(async (memories) => {
+    const active = memories.filter((memory) => memory.status === "active");
+    const archivedIds = new Set<string>();
+    const changes = [];
 
-  for (let i = 0; i < active.length; i++) {
-    const base = active[i];
-    if (archivedIds.has(base.id)) continue;
+    for (let i = 0; i < active.length; i++) {
+      const base = active[i];
+      if (archivedIds.has(base.id)) continue;
 
-    for (let j = i + 1; j < active.length; j++) {
-      const candidate = active[j];
-      if (archivedIds.has(candidate.id)) continue;
+      for (let j = i + 1; j < active.length; j++) {
+        const candidate = active[j];
+        if (archivedIds.has(candidate.id)) continue;
 
-      const merged = tryMergeMemory(base, candidate);
-      if (!merged) continue;
+        const merged = tryMergeMemory(base, candidate);
+        if (!merged) continue;
 
-      const target = memories.find((memory) => memory.id === base.id);
-      const duplicate = memories.find((memory) => memory.id === candidate.id);
-      if (!target || !duplicate) continue;
+        const target = memories.find((memory) => memory.id === base.id);
+        const duplicate = memories.find((memory) => memory.id === candidate.id);
+        if (!target || !duplicate) continue;
 
-      const targetBefore = { ...target };
-      const before = { ...duplicate };
-      Object.assign(target, merged);
-      changes.push(buildMemoryChange(targetBefore, target));
-      duplicate.status = "archived";
-      duplicate.updatedAt = Date.now();
-      archivedIds.add(candidate.id);
-      changes.push(buildMemoryChange(before, duplicate));
+        const targetBefore = { ...target };
+        const before = { ...duplicate };
+        Object.assign(target, merged);
+        changes.push(buildMemoryChange(targetBefore, target));
+        duplicate.status = "archived";
+        duplicate.updatedAt = Date.now();
+        archivedIds.add(candidate.id);
+        changes.push(buildMemoryChange(before, duplicate));
+      }
     }
-  }
 
-  await saveMemories(memories);
-  return buildMutationResult("merge", changes);
+    return buildMutationResult("merge", changes, {
+      conflicts: detectMemoryConflicts(memories),
+    });
+  });
 }

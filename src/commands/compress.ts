@@ -1,8 +1,8 @@
 import crypto from "crypto";
-import { buildCreationChange, buildMemoryChange, buildMutationResult } from "./contracts";
-import { loadMemories, saveMemories } from "./memory-store";
-import { Memory, MemoryMutationResult } from "./types";
-import { overlapScore } from "./utils";
+import { buildCreationChange, buildMemoryChange, buildMutationResult } from "../core/contracts";
+import { Memory, MemoryMutationResult } from "../core/types";
+import { overlapScore } from "../core/utils";
+import { withLockedMemories } from "../storage/memory-store";
 
 function kindCompatible(a: Memory, b: Memory): boolean {
   if (a.kind === b.kind) return true;
@@ -118,36 +118,37 @@ function buildCompressedMemory(group: Memory[]): Memory {
 }
 
 export async function compressMemories(): Promise<MemoryMutationResult> {
-  const memories = await loadMemories();
-  const changes = [];
+  return withLockedMemories(async (memories) => {
+    const changes = [];
 
-  const candidates = memories.filter(
-    (m) =>
-      m.status === "active" &&
-      m.reviewState === "approved" &&
-      !m.restrictedToInbox &&
-      m.layer !== "inbox" &&
-      m.layer !== "core"
-  );
+    const candidates = memories.filter(
+      (m) =>
+        m.status === "active" &&
+        m.reviewState === "approved" &&
+        !m.restrictedToInbox &&
+        m.layer !== "inbox" &&
+        m.layer !== "core"
+    );
 
-  const groups = clusterMemories(candidates).filter((g) => g.length >= 3);
-  const compressed: Memory[] = [];
+    const groups = clusterMemories(candidates).filter((g) => g.length >= 3);
+    const compressed: Memory[] = [];
 
-  for (const group of groups) {
-    const newMemory = buildCompressedMemory(group);
-    compressed.push(newMemory);
-    changes.push(buildCreationChange(newMemory));
+    for (const group of groups) {
+      const newMemory = buildCompressedMemory(group);
+      compressed.push(newMemory);
+      changes.push(buildCreationChange(newMemory));
 
-    for (const original of memories) {
-      if (group.some((g) => g.id === original.id)) {
-        const before = { ...original };
-        original.status = "archived";
-        original.updatedAt = Date.now();
-        changes.push(buildMemoryChange(before, original));
+      for (const original of memories) {
+        if (group.some((g) => g.id === original.id)) {
+          const before = { ...original };
+          original.status = "archived";
+          original.updatedAt = Date.now();
+          changes.push(buildMemoryChange(before, original));
+        }
       }
     }
-  }
 
-  await saveMemories([...memories, ...compressed]);
-  return buildMutationResult("compact", changes);
+    memories.push(...compressed);
+    return buildMutationResult("compact", changes);
+  });
 }

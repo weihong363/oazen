@@ -2,13 +2,29 @@ import {
   CliActionError,
   Memory,
   MemoryChange,
+  MemoryConflict,
   MemoryMutationAction,
   MemoryMutationResult,
   MemoryQueryResult,
   MemorySummary,
 } from "./types";
 
-export function summarizeMemory(memory: Memory): MemorySummary {
+function buildConflictMap(conflicts: MemoryConflict[]): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+
+  for (const conflict of conflicts) {
+    const [leftId, rightId] = conflict.memoryIds;
+    map.set(leftId, [...(map.get(leftId) ?? []), rightId]);
+    map.set(rightId, [...(map.get(rightId) ?? []), leftId]);
+  }
+
+  return map;
+}
+
+export function summarizeMemory(
+  memory: Memory,
+  extras: { conflictsWith?: string[] } = {}
+): MemorySummary {
   return {
     id: memory.id,
     layer: memory.layer,
@@ -23,6 +39,7 @@ export function summarizeMemory(memory: Memory): MemorySummary {
     restrictedToInbox: memory.restrictedToInbox,
     strength: memory.strength,
     updatedAt: memory.updatedAt,
+    conflictsWith: extras.conflictsWith,
   };
 }
 
@@ -41,6 +58,7 @@ export function buildCreationChange(after: Memory): MemoryChange {
 }
 
 export function buildReviewResult(memories: Memory[]): MemoryQueryResult {
+  const conflicts: MemoryConflict[] = [];
   return {
     version: "1",
     kind: "memory_query_result",
@@ -51,15 +69,17 @@ export function buildReviewResult(memories: Memory[]): MemoryQueryResult {
       safe: memories.filter((memory) => memory.sensitivity === "safe").length,
       review: memories.filter((memory) => memory.sensitivity === "review").length,
       restricted: memories.filter((memory) => memory.restrictedToInbox).length,
+      conflicts: conflicts.length,
     },
-    items: memories.map(summarizeMemory),
+    items: memories.map((memory) => summarizeMemory(memory)),
+    conflicts,
   };
 }
 
 export function buildMutationResult(
   action: MemoryMutationAction,
   changes: MemoryChange[],
-  extras: Pick<MemoryMutationResult, "scope" | "blocked"> = {}
+  extras: Pick<MemoryMutationResult, "scope" | "blocked" | "conflicts"> = {}
 ): MemoryMutationResult {
   return {
     version: "1",
@@ -88,5 +108,30 @@ export function buildCliActionError(action: string, error: unknown): CliActionEr
     error: {
       message: error instanceof Error ? error.message : String(error),
     },
+  };
+}
+
+export function buildConflictAwareReviewResult(
+  memories: Memory[],
+  conflicts: MemoryConflict[]
+): MemoryQueryResult {
+  const conflictMap = buildConflictMap(conflicts);
+
+  return {
+    version: "1",
+    kind: "memory_query_result",
+    action: "review",
+    timestamp: Date.now(),
+    counts: {
+      total: memories.length,
+      safe: memories.filter((memory) => memory.sensitivity === "safe").length,
+      review: memories.filter((memory) => memory.sensitivity === "review").length,
+      restricted: memories.filter((memory) => memory.restrictedToInbox).length,
+      conflicts: conflicts.length,
+    },
+    items: memories.map((memory) =>
+      summarizeMemory(memory, { conflictsWith: conflictMap.get(memory.id) })
+    ),
+    conflicts,
   };
 }

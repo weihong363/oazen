@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { spawnSync } from "node:child_process";
+import { execFile, spawnSync } from "node:child_process";
 import test from "node:test";
 
 const repoRoot = path.resolve(process.cwd());
@@ -24,6 +24,32 @@ function runCli(args, options = {}) {
     stdout: result.stdout,
     stderr: result.stderr,
   };
+}
+
+function runCliAsync(args, options = {}) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      "node",
+      [cliPath, ...args],
+      {
+        cwd: options.cwd ?? repoRoot,
+        env: { ...process.env, ...options.env },
+        encoding: "utf-8",
+      },
+      (error, stdout, stderr) => {
+        if (error && !options.allowFailure) {
+          reject(new Error(stderr || stdout || error.message));
+          return;
+        }
+
+        resolve({
+          status: error?.code ?? 0,
+          stdout,
+          stderr,
+        });
+      }
+    );
+  });
 }
 
 test("CLI smoke flow is repeatable across cwd and respects scope plus safety gates", () => {
@@ -82,6 +108,7 @@ test("CLI smoke flow is repeatable across cwd and respects scope plus safety gat
   assert.equal(review.kind, "memory_query_result");
   assert.equal(review.action, "review");
   assert.equal(review.counts.total, 3);
+  assert.equal(review.counts.conflicts, 0);
 
   const approvableId = review.items.find(
     (memory) => !memory.restrictedToInbox && memory.kind === "fact"
@@ -115,7 +142,11 @@ test("CLI smoke flow is repeatable across cwd and respects scope plus safety gat
     runCli(["recall", "parser retries in app worker", "--cwd", fakeProject], { env }).stdout
   );
   assert.equal(recall.version, "1");
+  assert.equal(recall.kind, "recall_result");
+  assert.equal(recall.action, "recall");
   assert.ok(recall.memories.length >= 1, "expected at least one recalled memory");
+  assert.ok(recall.counts.retrieved >= recall.counts.selected);
+  assert.ok(recall.tokenEstimate.baseline >= recall.tokenEstimate.selected);
   assert.ok(
     recall.memories.every((memory) => memory.scope === "project" || memory.scope === "global")
   );
@@ -129,6 +160,53 @@ test("CLI smoke flow is repeatable across cwd and respects scope plus safety gat
     { env }
   );
   assert.match(codexPacket.stdout, /<OAZEN_CONTEXT_PACKET version="1">/);
+
+  rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("writeback skips markdown structure noise while keeping useful memories", () => {
+  const tempRoot = mkdtempSync(path.join(tmpdir(), "oazen-markdown-"));
+  const memoryHome = path.join(tempRoot, "memory-home");
+  const sessionFile = path.join(tempRoot, "memory.md");
+
+  writeFileSync(
+    sessionFile,
+    [
+      "## User preferences",
+      "Preference signals:",
+      "- Default to the simplest runnable implementation first; avoid overengineering and keep files/functions small when possible.",
+      "- `tests/run-tests.js` is the verification gate; `node /Users/ironion/workspace/sleep-rank/tests/run-tests.js` passed after major refactors.",
+      "The root cause is parser state drift across repeated retries in the app worker.",
+    ].join("\n")
+  );
+
+  const env = { OAZEN_HOME: memoryHome };
+  const writebackResult = JSON.parse(
+    runCli(["writeback", "--file", sessionFile, "--scope", "global"], { env }).stdout
+  );
+
+  assert.equal(writebackResult.kind, "memory_mutation_result");
+  assert.equal(writebackResult.action, "writeback");
+  assert.equal(writebackResult.counts.created, 3);
+
+  const createdContents = writebackResult.changes.map((change) => change.after?.content ?? "");
+  assert.ok(
+    createdContents.some((content) =>
+      content.includes("Default to the simplest runnable implementation first")
+    )
+  );
+  assert.ok(
+    createdContents.some((content) =>
+      content.includes("tests/run-tests.js") && content.includes("[redacted-path]")
+    )
+  );
+  assert.ok(
+    createdContents.some((content) =>
+      content.includes("parser state drift across repeated retries")
+    )
+  );
+  assert.ok(createdContents.every((content) => content !== "## User preferences"));
+  assert.ok(createdContents.every((content) => content !== "Preference signals:"));
 
   rmSync(tempRoot, { recursive: true, force: true });
 });
@@ -251,6 +329,76 @@ test("reject, merge, and forget return machine-readable mutation contracts", () 
   assert.equal(forgetResult.action, "forget");
   assert.ok(forgetResult.changes.some((change) => change.after.id === "old-fact"));
   assert.ok(forgetResult.changes.some((change) => change.after.status === "archived"));
+
+  rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("review and merge surface conflicts for contradictory same-scope memories", () => {
+  const tempRoot = mkdtempSync(path.join(tmpdir(), "oazen-conflicts-"));
+  const memoryHome = path.join(tempRoot, "memory-home");
+  const now = Date.now();
+  const memories = [
+    {
+      id: "pending-positive",
+      layer: "inbox",
+      kind: "workflow",
+      scope: "repo",
+      scopeKey: "repo:/tmp/conflicts",
+      title: "Use read-back verification",
+      content: "Always use gomokuGetProfile read-back verification before treating auth as complete.",
+      tags: [],
+      source: "derived",
+      strength: 0.7,
+      accessCount: 0,
+      lastAccessedAt: now,
+      createdAt: now,
+      updatedAt: now,
+      stability: "stable",
+      status: "active",
+      reviewState: "pending",
+      sensitivity: "safe",
+      sensitivityReasons: [],
+      restrictedToInbox: false,
+    },
+    {
+      id: "approved-negative",
+      layer: "session",
+      kind: "workflow",
+      scope: "repo",
+      scopeKey: "repo:/tmp/conflicts",
+      title: "Skip read-back verification",
+      content: "Do not use gomokuGetProfile read-back verification before treating auth as complete.",
+      tags: [],
+      source: "derived",
+      strength: 0.8,
+      accessCount: 0,
+      lastAccessedAt: now,
+      createdAt: now,
+      updatedAt: now,
+      stability: "stable",
+      status: "active",
+      reviewState: "approved",
+      sensitivity: "safe",
+      sensitivityReasons: [],
+      restrictedToInbox: false,
+    },
+  ];
+
+  mkdirSync(path.join(memoryHome, "data"), { recursive: true });
+  writeFileSync(path.join(memoryHome, "data", "memories.json"), JSON.stringify(memories, null, 2));
+
+  const env = { OAZEN_HOME: memoryHome };
+  const review = JSON.parse(runCli(["review"], { env }).stdout);
+  assert.equal(review.counts.conflicts, 1);
+  assert.equal(review.conflicts.length, 1);
+  assert.deepEqual(review.conflicts[0].memoryIds, ["pending-positive", "approved-negative"]);
+  assert.deepEqual(review.items[0].conflictsWith, ["approved-negative"]);
+
+  const merge = JSON.parse(runCli(["merge"], { env }).stdout);
+  assert.equal(merge.kind, "memory_mutation_result");
+  assert.equal(merge.action, "merge");
+  assert.equal(merge.conflicts.length, 1);
+  assert.deepEqual(merge.conflicts[0].memoryIds, ["pending-positive", "approved-negative"]);
 
   rmSync(tempRoot, { recursive: true, force: true });
 });
@@ -425,6 +573,167 @@ test("project scope stays isolated and outranks repo scope during recall", () =>
   );
   assert.ok(recallB.memories.every((memory) => memory.id !== "project-a-memory"));
   assert.ok(recallB.memories.some((memory) => memory.id === "repo-memory"));
+
+  rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("parallel approve commands do not lose updates", async () => {
+  const tempRoot = mkdtempSync(path.join(tmpdir(), "oazen-lock-"));
+  const memoryHome = path.join(tempRoot, "memory-home");
+  const now = Date.now();
+  const memories = [
+    {
+      id: "approve-1",
+      layer: "inbox",
+      kind: "fact",
+      scope: "global",
+      scopeKey: "global",
+      title: "Approve one",
+      content: "The root cause is parser drift in flow one.",
+      tags: [],
+      source: "derived",
+      strength: 0.55,
+      accessCount: 0,
+      lastAccessedAt: now,
+      createdAt: now,
+      updatedAt: now,
+      stability: "stable",
+      status: "active",
+      reviewState: "pending",
+      sensitivity: "safe",
+      sensitivityReasons: [],
+      restrictedToInbox: false,
+    },
+    {
+      id: "approve-2",
+      layer: "inbox",
+      kind: "fact",
+      scope: "global",
+      scopeKey: "global",
+      title: "Approve two",
+      content: "The root cause is parser drift in flow two.",
+      tags: [],
+      source: "derived",
+      strength: 0.55,
+      accessCount: 0,
+      lastAccessedAt: now,
+      createdAt: now,
+      updatedAt: now,
+      stability: "stable",
+      status: "active",
+      reviewState: "pending",
+      sensitivity: "safe",
+      sensitivityReasons: [],
+      restrictedToInbox: false,
+    },
+    {
+      id: "approve-3",
+      layer: "inbox",
+      kind: "fact",
+      scope: "global",
+      scopeKey: "global",
+      title: "Approve three",
+      content: "The root cause is parser drift in flow three.",
+      tags: [],
+      source: "derived",
+      strength: 0.55,
+      accessCount: 0,
+      lastAccessedAt: now,
+      createdAt: now,
+      updatedAt: now,
+      stability: "stable",
+      status: "active",
+      reviewState: "pending",
+      sensitivity: "safe",
+      sensitivityReasons: [],
+      restrictedToInbox: false,
+    },
+  ];
+
+  mkdirSync(path.join(memoryHome, "data"), { recursive: true });
+  writeFileSync(path.join(memoryHome, "data", "memories.json"), JSON.stringify(memories, null, 2));
+
+  const env = { OAZEN_HOME: memoryHome };
+
+  const approvals = await Promise.all([
+    runCliAsync(["approve", "approve-1"], { env }),
+    runCliAsync(["approve", "approve-2"], { env }),
+    runCliAsync(["approve", "approve-3"], { env }),
+  ]);
+
+  for (const approval of approvals) {
+    const result = JSON.parse(approval.stdout);
+    assert.equal(result.kind, "memory_mutation_result");
+    assert.equal(result.action, "approve");
+    assert.equal(result.changes[0].after.layer, "session");
+  }
+
+  const stored = JSON.parse(readFileSync(path.join(memoryHome, "data", "memories.json"), "utf-8"));
+  assert.equal(
+    stored.filter((memory) => memory.layer === "session" && memory.reviewState === "approved").length,
+    3
+  );
+
+  const promoteResult = JSON.parse(runCli(["promote", "approve-2"], { env }).stdout);
+  assert.equal(promoteResult.kind, "memory_mutation_result");
+  assert.equal(promoteResult.action, "promote");
+  assert.equal(promoteResult.changes[0].before.layer, "session");
+  assert.equal(promoteResult.changes[0].after.layer, "fact");
+
+  rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("stale incomplete lock file does not block future mutations", async () => {
+  const tempRoot = mkdtempSync(path.join(tmpdir(), "oazen-stale-lock-"));
+  const memoryHome = path.join(tempRoot, "memory-home");
+  const dataDir = path.join(memoryHome, "data");
+  const memoryFile = path.join(dataDir, "memories.json");
+  const lockFile = `${memoryFile}.lock`;
+  const now = Date.now();
+
+  mkdirSync(dataDir, { recursive: true });
+  writeFileSync(
+    memoryFile,
+    JSON.stringify(
+      [
+        {
+          id: "stale-lock-memory",
+          layer: "inbox",
+          kind: "fact",
+          scope: "global",
+          scopeKey: "global",
+          title: "Stale lock memory",
+          content: "The root cause is stale lock recovery.",
+          tags: [],
+          source: "derived",
+          strength: 0.55,
+          accessCount: 0,
+          lastAccessedAt: now,
+          createdAt: now,
+          updatedAt: now,
+          stability: "stable",
+          status: "active",
+          reviewState: "pending",
+          sensitivity: "safe",
+          sensitivityReasons: [],
+          restrictedToInbox: false,
+        },
+      ],
+      null,
+      2
+    )
+  );
+
+  writeFileSync(lockFile, "");
+  utimesSync(lockFile, (now - 5000) / 1000, (now - 5000) / 1000);
+
+  const env = { OAZEN_HOME: memoryHome };
+  const approveResult = JSON.parse(runCli(["approve", "stale-lock-memory"], { env }).stdout);
+
+  assert.equal(approveResult.kind, "memory_mutation_result");
+  assert.equal(approveResult.action, "approve");
+  assert.equal(approveResult.changes[0].after.layer, "session");
+  assert.equal(existsSync(lockFile), false);
 
   rmSync(tempRoot, { recursive: true, force: true });
 });

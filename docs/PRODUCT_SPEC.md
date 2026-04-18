@@ -52,6 +52,11 @@ The product should feel lightweight. Users should not need to learn a complex me
 - keep user control visible
 - avoid unnecessary UI and configuration
 
+### MVP boundary
+- Phase 0-4 plus minimal Phase 5 define the practical MVP boundary
+- evaluation and benchmark tooling support proof and regression, but are not themselves the product core
+- after the core pipeline is stable, default to verification-first instead of broadening feature scope
+
 ---
 
 ## 4. Core Principles
@@ -134,6 +139,7 @@ Oazen should behave like a quiet background utility rather than a heavy platform
 - file-driven workflows
 - optional review for uncertain memory
 - no unnecessary clicks or nested settings
+- prefer validating the current flow over adding adjacent features once the core path is end-to-end usable
 
 ---
 

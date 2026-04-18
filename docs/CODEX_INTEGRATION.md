@@ -6,11 +6,18 @@ See also: [Sample Skill Workflow](SKILL_WORKFLOW.md)
 
 ## Recall Output
 
-`oazen recall "<task>"` returns JSON with:
+`oazen recall "<task>"` returns a `recall_result` JSON payload with:
 
+- `kind: "recall_result"`
+- `action: "recall"`
 - `version`
+- `timestamp`
 - `task`
 - `scope`
+- `counts`
+- `tokenEstimate`
+- `candidates`
+- `selected`
 - `memories`
 - grouped arrays: `core`, `facts`, `workflows`, `warnings`, `state`
 
@@ -21,12 +28,14 @@ See also: [Sample Skill Workflow](SKILL_WORKFLOW.md)
 Each recalled memory includes:
 
 - `id`
+- `title`
 - `layer`
 - `kind`
 - `scope`
 - `scopeKey`
 - `content`
 - `score`
+- `scoreBreakdown`
 - `sensitivity`
 
 This contract is stable enough for Codex adapters to consume directly.
@@ -115,6 +124,7 @@ When one of these commands fails, stderr returns:
 
 For adapters, treat `review.items` as the candidate queue and `mutation.changes` as the authoritative state transition log.
 For `writeback`, use `counts.created`, `counts.blocked`, `scope`, and `blocked[]` for ingestion bookkeeping.
+For `recall`, treat `selected[]` as the canonical injected context, `candidates[]` as the retrieval pool, and `tokenEstimate` as the context-size metric source.
 
 ## Lifecycle Constraints
 

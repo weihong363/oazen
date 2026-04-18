@@ -49,10 +49,10 @@ session log
 **Deliverables:**
 
 * `src/index.ts`
-* `src/types.ts`
-* `src/memory-store.ts`
-* `src/recall.ts`
-* `src/writeback.ts`
+* `src/core/types.ts`
+* `src/storage/memory-store.ts`
+* `src/commands/recall.ts`
+* `src/commands/writeback.ts`
 * `scripts/test-runner.sh`
 
 ---
@@ -71,8 +71,8 @@ session log
 
 **Deliverables:**
 
-* `src/promote.ts`
-* `src/review.ts`
+* `src/commands/promote.ts`
+* `src/commands/review.ts`
 * memory schema update
 
 ---
@@ -90,7 +90,7 @@ session log
 
 **Deliverables:**
 
-* `src/merge.ts`
+* `src/commands/merge.ts`
 * updated writeback pipeline
 
 ---
@@ -109,7 +109,7 @@ session log
 
 **Deliverables:**
 
-* `src/compress.ts`
+* `src/commands/compress.ts`
 * `oazen compact`
 
 ---
@@ -129,8 +129,8 @@ session log
 
 **Deliverables:**
 
-* `src/decay.ts`
-* `src/forget.ts`
+* `src/core/decay.ts`
+* `src/commands/forget.ts`
 * sensitive screening module
 * `oazen forget`
 
@@ -152,7 +152,28 @@ session log
 * adapter docs (`docs/CODEX_INTEGRATION.md`)
 * sample `AGENTS.md` (`AGENTS.md`)
 * sample skill workflow (`docs/SKILL_WORKFLOW.md`)
-* scope-aware ranking updates with regression coverage (`src/recall.ts`, `test/cli-smoke.test.mjs`)
+* scope-aware ranking updates with regression coverage (`src/commands/recall.ts`, `test/cli-smoke.test.mjs`)
+
+---
+
+## Phase 5.5 — Evaluation Foundation
+
+**Goal:** Make Oazen's value measurable with repeatable project-memory benchmarks.
+
+**Includes:**
+
+* stable `recall_result` JSON contract
+* fixture-based benchmark runner for precision, coverage, contamination, and token savings
+* benchmark-friendly source grouping under `src/`
+* human-in-the-loop resume benchmark guidance
+
+**Deliverables:**
+
+* benchmark runner (`src/eval/run-benchmark.ts`)
+* benchmark schema (`src/eval/types.ts`)
+* benchmark fixtures (`fixtures/benchmark/tasks.json`)
+* benchmark docs (`docs/BENCHMARKS.md`)
+* regression scripts (`package.json` -> `test:benchmark`, `test:benchmark:strict`)
 
 ---
 
@@ -230,12 +251,22 @@ session log
 7. verify project-level scope isolation
 8. ship Codex adapter docs, sample `AGENTS.md`, and sample skill workflow
 9. harden machine-readable mutation contracts for `writeback` / `review` / `approve` / `reject` / `promote` / `compact` / `merge` / `forget`
+10. add quality-gated Codex memory import regression flow
+11. group `src` by business direction (`cli`, `commands`, `core`, `storage`, `adapters`, `eval`)
+12. add stable `recall_result` contract and fixture-based benchmark runner
+13. add explicit conflict detection and conflict-aware `review` / `merge` output for same-scope contradictory memories
 
 ### Immediate Next
-1. unify `recall` around a stable `recall_result` JSON contract and keep `--format codex` as a renderer over that contract
-2. add explicit conflict detection and conflict-oriented review output in `src/merge.ts`
-3. add adapter fixtures or golden tests for Codex-facing context packet output
-4. add a small set of real-world session-log fixtures beyond smoke tests
+1. keep the project in verification-first mode: `npm test`
+2. keep the project in verification-first mode: `npm run test:benchmark:strict`
+3. keep the project in verification-first mode: `npm run test:benchmark:codex-exported:strict`
+4. keep the project in verification-first mode: `npm run test:codex-memory-import`
+5. only add new product behavior when verification shows a real MVP gap or unstable workflow
+
+### MVP Status
+1. Phase 0-4 plus minimal Phase 5 are essentially done
+2. the last strict MVP gap was conflict detection, and that gap is now closed
+3. the evaluation layer is useful for demos and proof, but it is supporting infrastructure rather than a blocker for MVP close-out
 
 ### Phase 6 — Multi-Agent Support
 1. design agent profile model with identity and preferences

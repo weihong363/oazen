@@ -58,21 +58,47 @@ export type Memory = {
   restrictedToInbox: boolean;
 };
 
+export type RecallScoreBreakdown = {
+  queryMatch: number;
+  scope: number;
+  layer: number;
+  kind: number;
+  strength: number;
+  total: number;
+};
+
 export type RankedMemory = {
   id: string;
+  title: string;
   layer: MemoryLayer;
   kind: MemoryKind;
   scope: MemoryScope;
   scopeKey: string;
   content: string;
   score: number;
+  scoreBreakdown: RecallScoreBreakdown;
   sensitivity: Memory["sensitivity"];
 };
 
-export type ContextPacket = {
+export type RecallResult = {
   version: "1";
+  kind: "recall_result";
+  action: "recall";
+  timestamp: number;
   task: string;
   scope: ScopeContext;
+  counts: {
+    retrieved: number;
+    selected: number;
+  };
+  tokenEstimate: {
+    baseline: number;
+    retrieved: number;
+    selected: number;
+    savedVsBaseline: number;
+  };
+  candidates: RankedMemory[];
+  selected: RankedMemory[];
   memories: RankedMemory[];
   core: string[];
   facts: string[];
@@ -106,11 +132,21 @@ export type MemorySummary = {
   restrictedToInbox: boolean;
   strength: number;
   updatedAt: number;
+  conflictsWith?: string[];
 };
 
 export type MemoryChange = {
   before: MemorySummary | null;
   after: MemorySummary | null;
+};
+
+export type MemoryConflict = {
+  id: string;
+  memoryIds: [string, string];
+  scope: MemoryScope;
+  scopeKey: string;
+  kind: MemoryKind;
+  reason: "conflicting_guidance";
 };
 
 export type MemoryQueryResult = {
@@ -123,8 +159,10 @@ export type MemoryQueryResult = {
     safe: number;
     review: number;
     restricted: number;
+    conflicts: number;
   };
   items: MemorySummary[];
+  conflicts: MemoryConflict[];
 };
 
 export type MemoryMutationAction =
@@ -152,6 +190,7 @@ export type MemoryMutationResult = {
   changes: MemoryChange[];
   scope?: Pick<ScopeContext, "cwd" | "inferredWriteScope" | "inferredScopeKey">;
   blocked?: WritebackBlockedItem[];
+  conflicts?: MemoryConflict[];
 };
 
 export type CliActionError = {

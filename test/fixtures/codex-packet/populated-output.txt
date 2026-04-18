@@ -1,0 +1,16 @@
+<OAZEN_CONTEXT_PACKET version="1">
+task: Fix the invite flow and keep the engine layer testable.
+cwd: /workspace/sleep-rank
+inferred_scope: repo
+repo: /workspace/sleep-rank
+project: /workspace/sleep-rank
+retrieved_candidates: 5
+selected_memories: 3
+selected_tokens: 54
+saved_vs_baseline: 74
+
+relevant_memories:
+- [repo/core/decision] score=19.40 Keep engine logic independent from mini program page code so multi-user and share flows stay testable.
+- [repo/fact/workflow] score=18.10 Prefer real WeChat share pathways over local fake invite selection when implementing sleep-rank invite flow.
+- [global/core/preference] score=11.35 Always rerun the exact failing verification command before claiming the task is done.
+</OAZEN_CONTEXT_PACKET>

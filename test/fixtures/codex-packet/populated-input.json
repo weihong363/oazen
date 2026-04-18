@@ -1,0 +1,217 @@
+{
+  "version": "1",
+  "kind": "recall_result",
+  "action": "recall",
+  "timestamp": 1713427200000,
+  "task": "Fix the invite flow and keep the engine layer testable.",
+  "scope": {
+    "cwd": "/workspace/sleep-rank",
+    "globalKey": "global",
+    "repoPath": "/workspace/sleep-rank",
+    "repoKey": "repo:/workspace/sleep-rank",
+    "projectPath": "/workspace/sleep-rank",
+    "projectKey": "project:/workspace/sleep-rank",
+    "inferredWriteScope": "repo",
+    "inferredScopeKey": "repo:/workspace/sleep-rank"
+  },
+  "counts": {
+    "retrieved": 5,
+    "selected": 3
+  },
+  "tokenEstimate": {
+    "baseline": 128,
+    "retrieved": 91,
+    "selected": 54,
+    "savedVsBaseline": 74
+  },
+  "candidates": [
+    {
+      "id": "sleep-engine-boundary",
+      "title": "Sleep-rank engine boundary",
+      "layer": "core",
+      "kind": "decision",
+      "scope": "repo",
+      "scopeKey": "repo:/workspace/sleep-rank",
+      "content": "Keep engine logic independent from mini program page code so multi-user and share flows stay testable.",
+      "score": 19.4,
+      "scoreBreakdown": {
+        "queryMatch": 8,
+        "scope": 3,
+        "layer": 4,
+        "kind": 0.5,
+        "strength": 3.9,
+        "total": 19.4
+      },
+      "sensitivity": "safe"
+    },
+    {
+      "id": "sleep-share-flow",
+      "title": "Sleep-rank share flow",
+      "layer": "fact",
+      "kind": "workflow",
+      "scope": "repo",
+      "scopeKey": "repo:/workspace/sleep-rank",
+      "content": "Prefer real WeChat share pathways over local fake invite selection when implementing sleep-rank invite flow.",
+      "score": 18.1,
+      "scoreBreakdown": {
+        "queryMatch": 9,
+        "scope": 3,
+        "layer": 2.5,
+        "kind": 1.2,
+        "strength": 2.4,
+        "total": 18.1
+      },
+      "sensitivity": "safe"
+    },
+    {
+      "id": "global-verify",
+      "title": "Verification first",
+      "layer": "core",
+      "kind": "preference",
+      "scope": "global",
+      "scopeKey": "global",
+      "content": "Always rerun the exact failing verification command before claiming the task is done.",
+      "score": 11.35,
+      "scoreBreakdown": {
+        "queryMatch": 3,
+        "scope": 1,
+        "layer": 4,
+        "kind": 0.5,
+        "strength": 2.85,
+        "total": 11.35
+      },
+      "sensitivity": "safe"
+    }
+  ],
+  "selected": [
+    {
+      "id": "sleep-engine-boundary",
+      "title": "Sleep-rank engine boundary",
+      "layer": "core",
+      "kind": "decision",
+      "scope": "repo",
+      "scopeKey": "repo:/workspace/sleep-rank",
+      "content": "Keep engine logic independent from mini program page code so multi-user and share flows stay testable.",
+      "score": 19.4,
+      "scoreBreakdown": {
+        "queryMatch": 8,
+        "scope": 3,
+        "layer": 4,
+        "kind": 0.5,
+        "strength": 3.9,
+        "total": 19.4
+      },
+      "sensitivity": "safe"
+    },
+    {
+      "id": "sleep-share-flow",
+      "title": "Sleep-rank share flow",
+      "layer": "fact",
+      "kind": "workflow",
+      "scope": "repo",
+      "scopeKey": "repo:/workspace/sleep-rank",
+      "content": "Prefer real WeChat share pathways over local fake invite selection when implementing sleep-rank invite flow.",
+      "score": 18.1,
+      "scoreBreakdown": {
+        "queryMatch": 9,
+        "scope": 3,
+        "layer": 2.5,
+        "kind": 1.2,
+        "strength": 2.4,
+        "total": 18.1
+      },
+      "sensitivity": "safe"
+    },
+    {
+      "id": "global-verify",
+      "title": "Verification first",
+      "layer": "core",
+      "kind": "preference",
+      "scope": "global",
+      "scopeKey": "global",
+      "content": "Always rerun the exact failing verification command before claiming the task is done.",
+      "score": 11.35,
+      "scoreBreakdown": {
+        "queryMatch": 3,
+        "scope": 1,
+        "layer": 4,
+        "kind": 0.5,
+        "strength": 2.85,
+        "total": 11.35
+      },
+      "sensitivity": "safe"
+    }
+  ],
+  "memories": [
+    {
+      "id": "sleep-engine-boundary",
+      "title": "Sleep-rank engine boundary",
+      "layer": "core",
+      "kind": "decision",
+      "scope": "repo",
+      "scopeKey": "repo:/workspace/sleep-rank",
+      "content": "Keep engine logic independent from mini program page code so multi-user and share flows stay testable.",
+      "score": 19.4,
+      "scoreBreakdown": {
+        "queryMatch": 8,
+        "scope": 3,
+        "layer": 4,
+        "kind": 0.5,
+        "strength": 3.9,
+        "total": 19.4
+      },
+      "sensitivity": "safe"
+    },
+    {
+      "id": "sleep-share-flow",
+      "title": "Sleep-rank share flow",
+      "layer": "fact",
+      "kind": "workflow",
+      "scope": "repo",
+      "scopeKey": "repo:/workspace/sleep-rank",
+      "content": "Prefer real WeChat share pathways over local fake invite selection when implementing sleep-rank invite flow.",
+      "score": 18.1,
+      "scoreBreakdown": {
+        "queryMatch": 9,
+        "scope": 3,
+        "layer": 2.5,
+        "kind": 1.2,
+        "strength": 2.4,
+        "total": 18.1
+      },
+      "sensitivity": "safe"
+    },
+    {
+      "id": "global-verify",
+      "title": "Verification first",
+      "layer": "core",
+      "kind": "preference",
+      "scope": "global",
+      "scopeKey": "global",
+      "content": "Always rerun the exact failing verification command before claiming the task is done.",
+      "score": 11.35,
+      "scoreBreakdown": {
+        "queryMatch": 3,
+        "scope": 1,
+        "layer": 4,
+        "kind": 0.5,
+        "strength": 2.85,
+        "total": 11.35
+      },
+      "sensitivity": "safe"
+    }
+  ],
+  "core": [
+    "Keep engine logic independent from mini program page code so multi-user and share flows stay testable.",
+    "Always rerun the exact failing verification command before claiming the task is done."
+  ],
+  "facts": [
+    "Keep engine logic independent from mini program page code so multi-user and share flows stay testable."
+  ],
+  "workflows": [
+    "Prefer real WeChat share pathways over local fake invite selection when implementing sleep-rank invite flow.",
+    "Always rerun the exact failing verification command before claiming the task is done."
+  ],
+  "warnings": [],
+  "state": []
+}
