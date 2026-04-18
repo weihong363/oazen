@@ -149,10 +149,10 @@ session log
 
 **Deliverables:**
 
-* adapter docs
-* sample `AGENTS.md`
-* sample skill workflow
-* scope-aware ranking updates
+* adapter docs (`docs/CODEX_INTEGRATION.md`)
+* sample `AGENTS.md` (`AGENTS.md`)
+* sample skill workflow (`docs/SKILL_WORKFLOW.md`)
+* scope-aware ranking updates with regression coverage (`src/recall.ts`, `test/cli-smoke.test.mjs`)
 
 ---
 
@@ -220,6 +220,7 @@ session log
 
 ## Next Build Step
 
+### Recently Completed
 1. finish `compress.ts`
 2. add `forget.ts`
 3. add reject flow
@@ -227,3 +228,25 @@ session log
 5. wire `compact` and `forget` into the CLI
 6. test with real session logs
 7. verify project-level scope isolation
+8. ship Codex adapter docs, sample `AGENTS.md`, and sample skill workflow
+9. harden machine-readable mutation contracts for `writeback` / `review` / `approve` / `reject` / `promote` / `compact` / `merge` / `forget`
+
+### Immediate Next
+1. unify `recall` around a stable `recall_result` JSON contract and keep `--format codex` as a renderer over that contract
+2. add explicit conflict detection and conflict-oriented review output in `src/merge.ts`
+3. add adapter fixtures or golden tests for Codex-facing context packet output
+4. add a small set of real-world session-log fixtures beyond smoke tests
+
+### Phase 6 — Multi-Agent Support
+1. design agent profile model with identity and preferences
+2. implement private vs shared memory policy
+3. build multi-agent adapter layer with scope isolation
+4. add handoff memory mechanism for agent collaboration
+5. create agent-specific recall and writeback policies
+
+### Phase 7 — Desktop Shell
+1. scaffold Tauri desktop app with basic window management
+2. build memory list view with filtering and sorting
+3. implement inbox review UI with approve/reject actions
+4. create active context view showing recalled memories
+5. integrate CLI commands with desktop UI backend

@@ -38,13 +38,33 @@ Oazen acts as an external memory layer that can:
 * CLI-based local memory runtime
 * memory writeback from session logs
 * recall before task execution
+* scope-aware recall and writeback
 * layered memory structure
 * inbox / session / fact / core lifecycle
 * memory merge and deduplication
 * memory compression
 * memory decay and forgetting
 * review / promote / reject flow
+* sensitive-data screening before persistence
 * adapter-style integration path for coding agents
+
+---
+
+## Minimal Workflow
+
+```bash
+oazen recall "fix parser retries" --format codex
+oazen writeback --file sessions/run.txt --cwd /path/to/project
+oazen review
+oazen approve <memory-id>
+oazen promote <memory-id>
+```
+
+Writeback scope defaults to `auto`, which resolves from the working directory:
+
+* `project`: nearest `package.json`
+* `repo`: nearest `.git`
+* `global`: fallback when no project/repo root is found
 
 ---
 

@@ -1,8 +1,11 @@
 import crypto from "crypto";
 import { promises as fs } from "fs";
+import { buildCreationChange, buildMemoryChange, buildMutationResult } from "./contracts";
 import { loadMemories, saveMemories } from "./memory-store";
-import { mergeIntoList } from "./merge";
-import { Memory, MemoryKind } from "./types";
+import { upsertMemory } from "./merge";
+import { inferScopeContext, resolveWriteScope } from "./scope";
+import { screenMemoryText } from "./safety";
+import { Memory, MemoryKind, MemoryMutationResult, MemoryScope } from "./types";
 
 function detectKind(sentence: string): MemoryKind | null {
   const s = sentence.toLowerCase();
@@ -17,23 +20,34 @@ function detectKind(sentence: string): MemoryKind | null {
 }
 
 function initialLayer(kind: MemoryKind): Memory["layer"] {
-  if (kind === "warning" || kind === "workflow") return "inbox";
   return "inbox";
 }
 
-function buildMemory(sentence: string, kind: MemoryKind): Memory {
+function buildMemory(
+  sentence: string,
+  kind: MemoryKind,
+  cwd: string,
+  requestedScope: MemoryScope | "auto"
+): Memory | null {
   const now = Date.now();
+  const context = inferScopeContext(cwd);
+  const scopeRef = resolveWriteScope(context, requestedScope);
+  const screening = screenMemoryText(sentence);
+
+  if (screening.level === "blocked") return null;
 
   return {
     id: crypto.randomUUID(),
     layer: initialLayer(kind),
     kind,
-    scope: "global",
-    title: sentence.slice(0, 80),
-    content: sentence.trim(),
+    scope: scopeRef.scope,
+    scopeKey: scopeRef.scopeKey,
+    scopePath: scopeRef.scopePath,
+    title: screening.redactedTitle,
+    content: screening.redactedContent.trim(),
     tags: [],
     source: "derived",
-    evidence: sentence.trim(),
+    evidence: screening.redactedContent.trim(),
     strength: 0.55,
     accessCount: 0,
     lastAccessedAt: now,
@@ -41,30 +55,70 @@ function buildMemory(sentence: string, kind: MemoryKind): Memory {
     updatedAt: now,
     stability: kind === "state" ? "volatile" : "stable",
     status: "active",
+    reviewState: "pending",
+    sensitivity: screening.level,
+    sensitivityReasons: screening.reasons,
+    restrictedToInbox: screening.restrictedToInbox,
   };
 }
 
-export async function writebackFromFile(filePath: string): Promise<Memory[]> {
+export async function writebackFromFile(
+  filePath: string,
+  options: { cwd?: string; scope?: MemoryScope | "auto" } = {}
+): Promise<MemoryMutationResult> {
   const raw = await fs.readFile(filePath, "utf-8");
+  const cwd = options.cwd ?? process.cwd();
+  const scope = options.scope ?? "auto";
+  const context = inferScopeContext(cwd);
 
   const sentences = raw
     .split(/\n|[.!?]/)
-    .map((s) => s.trim())
-    .filter((s) => s.length >= 18);
+    .map((sentence: string) => sentence.trim())
+    .filter((sentence: string) => sentence.length >= 18);
 
-  const extracted = sentences
-    .map((s) => {
-      const kind = detectKind(s);
-      return kind ? buildMemory(s, kind) : null;
-    })
-    .filter(Boolean) as Memory[];
+  const blocked = [];
+  const extracted: Memory[] = [];
+
+  for (const sentence of sentences) {
+    const screening = screenMemoryText(sentence);
+    if (screening.level === "blocked") {
+      blocked.push({ content: screening.redactedContent, reasons: screening.reasons });
+      continue;
+    }
+
+    const kind = detectKind(sentence);
+    if (!kind) continue;
+
+    const memory = buildMemory(sentence, kind, cwd, scope);
+    if (memory) extracted.push(memory);
+  }
 
   let current = await loadMemories();
+  const changes = [];
 
   for (const item of extracted) {
-    current = mergeIntoList(current, item);
+    const result = upsertMemory(current, item);
+    current = result.memories;
+    changes.push(
+      result.change.before
+        ? buildMemoryChange(result.change.before, result.change.after)
+        : buildCreationChange(result.change.after)
+    );
   }
 
   await saveMemories(current);
-  return extracted;
+  const scopeRef = resolveWriteScope(context, scope);
+
+  return buildMutationResult(
+    "writeback",
+    changes,
+    {
+      scope: {
+        cwd: context.cwd,
+        inferredWriteScope: scopeRef.scope,
+        inferredScopeKey: scopeRef.scopeKey,
+      },
+      blocked,
+    }
+  );
 }

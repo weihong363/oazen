@@ -1,6 +1,7 @@
 import crypto from "crypto";
+import { buildCreationChange, buildMemoryChange, buildMutationResult } from "./contracts";
 import { loadMemories, saveMemories } from "./memory-store";
-import { Memory } from "./types";
+import { Memory, MemoryMutationResult } from "./types";
 import { overlapScore } from "./utils";
 
 function kindCompatible(a: Memory, b: Memory): boolean {
@@ -19,7 +20,10 @@ function canCompress(a: Memory, b: Memory): boolean {
   if (a.status !== "active" || b.status !== "active") return false;
   if (a.layer !== b.layer) return false;
   if (a.scope !== b.scope) return false;
+  if (a.scopeKey !== b.scopeKey) return false;
   if (a.layer === "inbox" || a.layer === "core") return false;
+  if (a.reviewState !== "approved" || b.reviewState !== "approved") return false;
+  if (a.restrictedToInbox || b.restrictedToInbox) return false;
   if (!kindCompatible(a, b)) return false;
 
   const score = overlapScore(
@@ -91,6 +95,8 @@ function buildCompressedMemory(group: Memory[]): Memory {
     layer: group[0].layer,
     kind: chooseKind(group),
     scope: group[0].scope,
+    scopeKey: group[0].scopeKey,
+    scopePath: group[0].scopePath,
     title: `Compressed: ${group[0].title.slice(0, 50)}`,
     content: summarizeGroup(group),
     tags: [...new Set(group.flatMap((g) => g.tags))],
@@ -104,15 +110,22 @@ function buildCompressedMemory(group: Memory[]): Memory {
     updatedAt: now,
     stability: "stable",
     status: "active",
+    reviewState: "approved",
+    sensitivity: "safe",
+    sensitivityReasons: [],
+    restrictedToInbox: false,
   };
 }
 
-export async function compressMemories(): Promise<Memory[]> {
+export async function compressMemories(): Promise<MemoryMutationResult> {
   const memories = await loadMemories();
+  const changes = [];
 
   const candidates = memories.filter(
     (m) =>
       m.status === "active" &&
+      m.reviewState === "approved" &&
+      !m.restrictedToInbox &&
       m.layer !== "inbox" &&
       m.layer !== "core"
   );
@@ -123,15 +136,18 @@ export async function compressMemories(): Promise<Memory[]> {
   for (const group of groups) {
     const newMemory = buildCompressedMemory(group);
     compressed.push(newMemory);
+    changes.push(buildCreationChange(newMemory));
 
     for (const original of memories) {
       if (group.some((g) => g.id === original.id)) {
+        const before = { ...original };
         original.status = "archived";
         original.updatedAt = Date.now();
+        changes.push(buildMemoryChange(before, original));
       }
     }
   }
 
   await saveMemories([...memories, ...compressed]);
-  return compressed;
+  return buildMutationResult("compact", changes);
 }

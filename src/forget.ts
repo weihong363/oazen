@@ -1,11 +1,12 @@
+import { buildMemoryChange, buildMutationResult } from "./contracts";
 import { loadMemories, saveMemories } from "./memory-store";
+import { MemoryMutationResult } from "./types";
 import { decayStrength } from "./decay";
 
-export async function forgetWeakMemories(): Promise<number> {
+export async function forgetWeakMemories(): Promise<MemoryMutationResult> {
   const memories = await loadMemories();
   const now = Date.now();
-
-  let archivedCount = 0;
+  const changes = [];
 
   for (const memory of memories) {
     if (memory.status !== "active") continue;
@@ -30,12 +31,13 @@ export async function forgetWeakMemories(): Promise<number> {
       memory.strength < 0.08;
 
     if (shouldArchiveInbox || shouldArchiveSession || shouldArchiveFact) {
+      const before = { ...memory };
       memory.status = "archived";
       memory.updatedAt = now;
-      archivedCount += 1;
+      changes.push(buildMemoryChange(before, memory));
     }
   }
 
   await saveMemories(memories);
-  return archivedCount;
+  return buildMutationResult("forget", changes);
 }
