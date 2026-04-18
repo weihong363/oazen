@@ -1,0 +1,35 @@
+{
+  "version": "1",
+  "kind": "recall_result",
+  "action": "recall",
+  "timestamp": 1713427200000,
+  "task": "Continue an empty project.",
+  "scope": {
+    "cwd": "/workspace/empty",
+    "globalKey": "global",
+    "repoPath": "/workspace/empty",
+    "repoKey": "repo:/workspace/empty",
+    "projectPath": "/workspace/empty",
+    "projectKey": "project:/workspace/empty",
+    "inferredWriteScope": "repo",
+    "inferredScopeKey": "repo:/workspace/empty"
+  },
+  "counts": {
+    "retrieved": 0,
+    "selected": 0
+  },
+  "tokenEstimate": {
+    "baseline": 18,
+    "retrieved": 0,
+    "selected": 0,
+    "savedVsBaseline": 18
+  },
+  "candidates": [],
+  "selected": [],
+  "memories": [],
+  "core": [],
+  "facts": [],
+  "workflows": [],
+  "warnings": [],
+  "state": []
+}

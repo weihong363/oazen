@@ -7,9 +7,15 @@
     "oazen": "dist/index.js"
   },
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "node --import tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test": "npm run build && node --test",
+    "test:codex-memory-import": "bash scripts/test-codex-memory-import.sh",
+    "test:benchmark": "npm run build && node dist/eval/run-benchmark.js fixtures/benchmark/tasks.json",
+    "test:benchmark:strict": "npm run build && node dist/eval/run-benchmark.js fixtures/benchmark/tasks.json --strict",
+    "test:benchmark:codex-exported": "npm run build && node dist/eval/run-benchmark.js fixtures/benchmark/codex-exported.json",
+    "test:benchmark:codex-exported:strict": "npm run build && node dist/eval/run-benchmark.js fixtures/benchmark/codex-exported.json --strict"
   },
   "dependencies": {
     "commander": "^14.0.1"

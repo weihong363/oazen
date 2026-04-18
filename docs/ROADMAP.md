@@ -49,10 +49,10 @@ session log
 **Deliverables:**
 
 * `src/index.ts`
-* `src/types.ts`
-* `src/memory-store.ts`
-* `src/recall.ts`
-* `src/writeback.ts`
+* `src/core/types.ts`
+* `src/storage/memory-store.ts`
+* `src/commands/recall.ts`
+* `src/commands/writeback.ts`
 * `scripts/test-runner.sh`
 
 ---
@@ -71,8 +71,8 @@ session log
 
 **Deliverables:**
 
-* `src/promote.ts`
-* `src/review.ts`
+* `src/commands/promote.ts`
+* `src/commands/review.ts`
 * memory schema update
 
 ---
@@ -90,7 +90,7 @@ session log
 
 **Deliverables:**
 
-* `src/merge.ts`
+* `src/commands/merge.ts`
 * updated writeback pipeline
 
 ---
@@ -109,7 +109,7 @@ session log
 
 **Deliverables:**
 
-* `src/compress.ts`
+* `src/commands/compress.ts`
 * `oazen compact`
 
 ---
@@ -129,8 +129,8 @@ session log
 
 **Deliverables:**
 
-* `src/decay.ts`
-* `src/forget.ts`
+* `src/core/decay.ts`
+* `src/commands/forget.ts`
 * sensitive screening module
 * `oazen forget`
 
@@ -149,10 +149,31 @@ session log
 
 **Deliverables:**
 
-* adapter docs
-* sample `AGENTS.md`
-* sample skill workflow
-* scope-aware ranking updates
+* adapter docs (`docs/CODEX_INTEGRATION.md`)
+* sample `AGENTS.md` (`AGENTS.md`)
+* sample skill workflow (`docs/SKILL_WORKFLOW.md`)
+* scope-aware ranking updates with regression coverage (`src/commands/recall.ts`, `test/cli-smoke.test.mjs`)
+
+---
+
+## Phase 5.5 — Evaluation Foundation
+
+**Goal:** Make Oazen's value measurable with repeatable project-memory benchmarks.
+
+**Includes:**
+
+* stable `recall_result` JSON contract
+* fixture-based benchmark runner for precision, coverage, contamination, and token savings
+* benchmark-friendly source grouping under `src/`
+* human-in-the-loop resume benchmark guidance
+
+**Deliverables:**
+
+* benchmark runner (`src/eval/run-benchmark.ts`)
+* benchmark schema (`src/eval/types.ts`)
+* benchmark fixtures (`fixtures/benchmark/tasks.json`)
+* benchmark docs (`docs/BENCHMARKS.md`)
+* regression scripts (`package.json` -> `test:benchmark`, `test:benchmark:strict`)
 
 ---
 
@@ -220,6 +241,7 @@ session log
 
 ## Next Build Step
 
+### Recently Completed
 1. finish `compress.ts`
 2. add `forget.ts`
 3. add reject flow
@@ -227,3 +249,35 @@ session log
 5. wire `compact` and `forget` into the CLI
 6. test with real session logs
 7. verify project-level scope isolation
+8. ship Codex adapter docs, sample `AGENTS.md`, and sample skill workflow
+9. harden machine-readable mutation contracts for `writeback` / `review` / `approve` / `reject` / `promote` / `compact` / `merge` / `forget`
+10. add quality-gated Codex memory import regression flow
+11. group `src` by business direction (`cli`, `commands`, `core`, `storage`, `adapters`, `eval`)
+12. add stable `recall_result` contract and fixture-based benchmark runner
+13. add explicit conflict detection and conflict-aware `review` / `merge` output for same-scope contradictory memories
+
+### Immediate Next
+1. keep the project in verification-first mode: `npm test`
+2. keep the project in verification-first mode: `npm run test:benchmark:strict`
+3. keep the project in verification-first mode: `npm run test:benchmark:codex-exported:strict`
+4. keep the project in verification-first mode: `npm run test:codex-memory-import`
+5. only add new product behavior when verification shows a real MVP gap or unstable workflow
+
+### MVP Status
+1. Phase 0-4 plus minimal Phase 5 are essentially done
+2. the last strict MVP gap was conflict detection, and that gap is now closed
+3. the evaluation layer is useful for demos and proof, but it is supporting infrastructure rather than a blocker for MVP close-out
+
+### Phase 6 — Multi-Agent Support
+1. design agent profile model with identity and preferences
+2. implement private vs shared memory policy
+3. build multi-agent adapter layer with scope isolation
+4. add handoff memory mechanism for agent collaboration
+5. create agent-specific recall and writeback policies
+
+### Phase 7 — Desktop Shell
+1. scaffold Tauri desktop app with basic window management
+2. build memory list view with filtering and sorting
+3. implement inbox review UI with approve/reject actions
+4. create active context view showing recalled memories
+5. integrate CLI commands with desktop UI backend

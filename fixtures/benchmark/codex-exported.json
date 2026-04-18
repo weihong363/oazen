@@ -1,0 +1,261 @@
+{
+  "version": "1.0.0",
+  "name": "codex-exported memory benchmark",
+  "workspaces": [
+    {
+      "id": "sleep-rank",
+      "path": "sleep-rank",
+      "kind": "repo"
+    },
+    {
+      "id": "gomoku",
+      "path": "gomoku",
+      "kind": "repo"
+    },
+    {
+      "id": "ai-workforce-sim",
+      "path": "ai-workforce-sim",
+      "kind": "repo"
+    },
+    {
+      "id": "copycatcher",
+      "path": "copycatcher",
+      "kind": "repo"
+    },
+    {
+      "id": "local-vault",
+      "path": "local-vault",
+      "kind": "repo"
+    }
+  ],
+  "memories": [
+    {
+      "id": "global-verification-gate",
+      "title": "Verification gate",
+      "content": "The verification command is the gate; rerun the exact failing check before saying a task is complete.",
+      "kind": "preference",
+      "scope": "global",
+      "layer": "core",
+      "strength": 0.95
+    },
+    {
+      "id": "sleep-share-real-pathways",
+      "workspaceId": "sleep-rank",
+      "scope": "repo",
+      "title": "Sleep-rank share pathways",
+      "content": "Prefer real share pathways over local fake selection when the goal is actual WeChat user transfer.",
+      "kind": "workflow",
+      "layer": "fact"
+    },
+    {
+      "id": "sleep-completed-history",
+      "workspaceId": "sleep-rank",
+      "scope": "repo",
+      "title": "Completed-only history",
+      "content": "History should show completed challenges only, and cancelled records should be deleted instead of archived.",
+      "kind": "fact",
+      "layer": "fact"
+    },
+    {
+      "id": "sleep-log-engine-boundary",
+      "workspaceId": "sleep-rank",
+      "scope": "repo",
+      "title": "Engine-first session note",
+      "content": "The root cause was page code reaching into engine state directly; keep the engine layer independent so share and multi-user flows stay testable.",
+      "kind": "decision",
+      "layer": "session"
+    },
+    {
+      "id": "gomoku-cloud-readback",
+      "workspaceId": "gomoku",
+      "scope": "repo",
+      "title": "Cloud read-back truth",
+      "content": "Ready auth depends on gomokuGetProfile read-back verification, not just local gomokuLogin success.",
+      "kind": "workflow",
+      "layer": "fact"
+    },
+    {
+      "id": "gomoku-privacy-separation",
+      "workspaceId": "gomoku",
+      "scope": "repo",
+      "title": "Privacy errors must stay separate",
+      "content": "Keep privacy-denied, privacy-not-configured, and explicit user-cancel states separate instead of collapsing them into a generic cancellation message.",
+      "kind": "fact",
+      "layer": "fact"
+    },
+    {
+      "id": "gomoku-session-render-log",
+      "workspaceId": "gomoku",
+      "scope": "repo",
+      "title": "Home render regression note",
+      "content": "The root cause was a render/home-view.js crash, not the toggle handler, even though the symptom looked like a stuck home switch.",
+      "kind": "fact",
+      "layer": "session"
+    },
+    {
+      "id": "ai-selected-task-log",
+      "workspaceId": "ai-workforce-sim",
+      "scope": "repo",
+      "title": "selectedTaskId session note",
+      "content": "The root cause was selectedTaskId being dropped across rerenders, so play.html reopened the wrong task state.",
+      "kind": "fact",
+      "layer": "session"
+    },
+    {
+      "id": "ai-view-outcome-copy",
+      "workspaceId": "ai-workforce-sim",
+      "scope": "repo",
+      "title": "View Outcome contract",
+      "content": "Update tests to the current View Outcome behavior instead of restoring stale route copy just to satisfy assertions.",
+      "kind": "fact",
+      "layer": "fact"
+    },
+    {
+      "id": "copycatcher-protected-complete",
+      "workspaceId": "copycatcher",
+      "scope": "repo",
+      "title": "Protected completion flow",
+      "content": "Treat token auth, report history persistence, and blockchain ledger write-back as one completion flow and verify all of them before showing success.",
+      "kind": "workflow",
+      "layer": "fact"
+    },
+    {
+      "id": "copycatcher-progress-single-source",
+      "workspaceId": "copycatcher",
+      "scope": "repo",
+      "title": "Single PROGRESS source",
+      "content": "Keep one PROGRESS document so auth, similarity, ledger, and workflow fixes do not drift across duplicate status notes.",
+      "kind": "fact",
+      "layer": "fact"
+    },
+    {
+      "id": "local-summary-sidecar",
+      "workspaceId": "local-vault",
+      "scope": "repo",
+      "title": "Summary sidecar isolation",
+      "content": "Keep SummaryUseCases and the rule_based_memory_runtime sidecar isolated so the Hybrid Memory Runtime remains easy to iterate on or remove.",
+      "kind": "decision",
+      "layer": "core"
+    },
+    {
+      "id": "local-mediapipe-cleanup",
+      "workspaceId": "local-vault",
+      "scope": "repo",
+      "title": "MediaPipe cleanup memory",
+      "content": "The MediaPipe cleanup standardized slm_cache naming and follow-up work should not reintroduce the old cache path patterns.",
+      "kind": "fact",
+      "layer": "fact"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "sleep-rank-invite-resume",
+      "projectId": "sleep-rank",
+      "workspaceId": "sleep-rank",
+      "query": "Resume the sleep-rank invite work and keep the engine boundary intact while fixing real user transfer.",
+      "relevantMemoryIds": [
+        "global-verification-gate",
+        "sleep-share-real-pathways",
+        "sleep-log-engine-boundary"
+      ],
+      "keyMemoryIds": [
+        "sleep-share-real-pathways",
+        "sleep-log-engine-boundary"
+      ],
+      "limit": 3,
+      "targets": {
+        "minPrecision": 0.66,
+        "minCoverage": 1,
+        "maxContamination": 0,
+        "minTokenSaved": 1
+      }
+    },
+    {
+      "id": "gomoku-auth-resume",
+      "projectId": "gomoku",
+      "workspaceId": "gomoku",
+      "query": "Resume the gomoku auth bug and make sure privacy failure states are not confused with cloud sync failure.",
+      "relevantMemoryIds": [
+        "global-verification-gate",
+        "gomoku-cloud-readback",
+        "gomoku-privacy-separation",
+        "gomoku-session-render-log"
+      ],
+      "keyMemoryIds": [
+        "gomoku-cloud-readback",
+        "gomoku-privacy-separation"
+      ],
+      "limit": 3,
+      "targets": {
+        "minPrecision": 0.66,
+        "minCoverage": 1,
+        "maxContamination": 0,
+        "minTokenSaved": 1
+      }
+    },
+    {
+      "id": "ai-play-page-resume",
+      "projectId": "ai-workforce-sim",
+      "workspaceId": "ai-workforce-sim",
+      "query": "Resume the play page work so selectedTaskId and View Outcome behavior stay correct without reviving stale copy.",
+      "relevantMemoryIds": [
+        "global-verification-gate",
+        "ai-selected-task-log",
+        "ai-view-outcome-copy"
+      ],
+      "keyMemoryIds": [
+        "ai-selected-task-log",
+        "ai-view-outcome-copy"
+      ],
+      "limit": 3,
+      "targets": {
+        "minPrecision": 0.66,
+        "minCoverage": 1,
+        "maxContamination": 0,
+        "minTokenSaved": 1
+      }
+    },
+    {
+      "id": "copycatcher-ledger-resume",
+      "projectId": "copycatcher",
+      "workspaceId": "copycatcher",
+      "query": "Resume the copycatcher completion flow and make sure success waits for auth, history, and ledger write-back.",
+      "relevantMemoryIds": [
+        "global-verification-gate",
+        "copycatcher-protected-complete",
+        "copycatcher-progress-single-source"
+      ],
+      "keyMemoryIds": [
+        "copycatcher-protected-complete"
+      ],
+      "limit": 2,
+      "targets": {
+        "minPrecision": 1,
+        "minCoverage": 1,
+        "maxContamination": 0,
+        "minTokenSaved": 1
+      }
+    },
+    {
+      "id": "local-vault-runtime-resume",
+      "projectId": "local-vault",
+      "workspaceId": "local-vault",
+      "query": "Resume the Hybrid Memory Runtime work without letting the old MediaPipe cleanup take over the local-vault direction.",
+      "relevantMemoryIds": [
+        "global-verification-gate",
+        "local-summary-sidecar",
+        "local-mediapipe-cleanup"
+      ],
+      "keyMemoryIds": [
+        "local-summary-sidecar"
+      ],
+      "limit": 2,
+      "targets": {
+        "minPrecision": 1,
+        "minCoverage": 1,
+        "maxContamination": 0,
+        "minTokenSaved": 1
+      }
+    }
+  ]
+}
