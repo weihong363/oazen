@@ -120,7 +120,7 @@ Or they can be:
 
 ## Roadmap
 
-### 0–6 months
+### Phase 1: Foundation
 
 Make Oazen reliable:
 
@@ -130,7 +130,7 @@ Make Oazen reliable:
 * support global / project / repo scope
 * ship the first Codex adapter workflow
 
-### 6–12 months
+### Phase 2: Multi-Agent Support
 
 Make Oazen multi-agent aware:
 
@@ -139,7 +139,7 @@ Make Oazen multi-agent aware:
 * handoff memory
 * adapters for Codex, Claude Code, and more
 
-### 12–24 months
+### Phase 3: Scale & Safety
 
 Make Oazen safe at scale:
 
@@ -199,6 +199,12 @@ It is trying to be the quiet, reliable memory layer underneath agent workflows.
 [4]: https://docs.github.com/en/copilot/concepts/agents/copilot-memory "About agentic memory for GitHub Copilot - GitHub Docs"
 [5]: https://docs.anthropic.com/en/docs/claude-code/memory?utm_source=chatgpt.com "How Claude remembers your project - Claude Code Docs"
 [6]: https://docs.trae.ai/ide/memories?utm_source=chatgpt.com "Memories - Documentation"
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
@@ -310,7 +316,7 @@ Oazen采用分层记忆系统:
 
 ## 路线图
 
-### 0–6 个月
+### 阶段一：基础建设
 
 让Oazen变得可靠:
 
@@ -320,7 +326,7 @@ Oazen采用分层记忆系统:
 * 支持 global / project / repo 作用域
 * 发布首个 Codex 适配器工作流
 
-### 6–12 个月
+### 阶段二：多代理支持
 
 让Oazen支持多代理:
 
@@ -329,7 +335,7 @@ Oazen采用分层记忆系统:
 * 交接记忆
 * 适配 Codex、Claude Code 等更多代理
 
-### 12–24 个月
+### 阶段三：扩展与安全
 
 让Oazen在大规模下保持安全:
 
@@ -389,3 +395,9 @@ Oazen并不想成为庞大的代理平台。
 [4]: https://docs.github.com/en/copilot/concepts/agents/copilot-memory "About agentic memory for GitHub Copilot - GitHub Docs"
 [5]: https://docs.anthropic.com/en/docs/claude-code/memory?utm_source=chatgpt.com "How Claude remembers your project - Claude Code Docs"
 [6]: https://docs.trae.ai/ide/memories?utm_source=chatgpt.com "Memories - Documentation"
+
+---
+
+## 许可证
+
+MIT License - 详见 [LICENSE](LICENSE) 文件。
