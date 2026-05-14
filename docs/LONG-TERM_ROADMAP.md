@@ -2,14 +2,15 @@
 
 ## 1. Strategic Direction
 
-Oazen should evolve from a lightweight local memory runtime into a safe, flexible memory layer for multiple coding agents.
+Oazen should evolve from a hooks-driven project memory sidecar into a safe, flexible memory layer for multiple coding agents.
 
 The product should stay:
 
 * local-first
 * low-friction
 * inspectable
-* layered
+* project-scoped
+* adapter-friendly
 * safe by default
 
 The roadmap below is organized by the level of product maturity, not by feature hype.
@@ -24,17 +25,18 @@ Ship a stable core that actually improves real agent workflows.
 
 ### What to build
 
-* CLI stability
-* recall / writeback / review / promote / reject
-* merge and dedupe
-* compress and forget
-* layered memory lifecycle
-* scope support for global / project / repo
-* Codex adapter workflow
+* Codex hook install/uninstall
+* `SessionStart`, `UserPromptSubmit`, and `Stop`
+* robust project resolver
+* local project memory store
+* compact context injection
+* fail-open hook output
+* memory inspection commands
+* legacy recall/writeback support for debugging
 
 ### Exit criteria
 
-* Oazen can run end-to-end without manual patching
+* Oazen can run through Codex hooks without manual wrapper commands
 * memory quality is predictable
 * users can see where memories came from and where they went
 * the system does not feel like a toy
@@ -58,7 +60,7 @@ Support multiple agents without mixing their memory in a confusing way.
 * private agent memory
 * shared memory
 * handoff memory between agents
-* adapter layer for Codex, Claude Code, and future agents
+* adapter layer for Codex, Claude Code, Cursor, MCP, and future agents
 * policy for shared vs private memory
 
 ### Exit criteria
@@ -147,9 +149,10 @@ Even as Oazen grows, these principles should stay fixed:
 
 If execution has to stay lean, the order should be:
 
-1. stabilize the core pipeline
-2. add scope isolation
-3. add multi-agent awareness
-4. add safety and secret filtering
-5. expand adapters
-6. add desktop UI only if it helps, not because it is available
+1. stabilize Codex hooks
+2. harden project isolation
+3. add low-noise tool and permission hooks
+4. expand adapters
+5. add multi-agent awareness
+6. deepen safety and secret filtering
+7. add desktop UI only if it helps, not because it is available

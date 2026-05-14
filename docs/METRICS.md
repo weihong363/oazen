@@ -215,7 +215,7 @@ These four are enough to demonstrate:
 Compare two workflows on the same set of tasks:
 
 - **Baseline**: Codex without Oazen
-- **Variant**: Codex with Oazen sidecar enabled
+- **Variant**: Codex with Oazen hooks enabled
 
 ### Tasks
 
@@ -234,6 +234,8 @@ For each task, record:
 - project id
 - query/task summary
 - retrieved memories
+- injected hook context size
+- Stop records written
 - final context size
 - token count before and after filtering
 - whether any cross-project memory was included

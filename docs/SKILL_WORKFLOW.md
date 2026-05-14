@@ -1,57 +1,100 @@
 # Sample Skill Workflow
 
-This file is a concrete example of how a Codex-oriented skill can use Oazen.
+This file is a concrete example of how a Codex-oriented skill should use Oazen after the hooks refactor.
 
 ## Goal
 
-Use Oazen as a narrow memory sidecar around a task:
+Use Oazen as a quiet project memory sidecar:
 
-1. recall relevant memory
-2. execute the task
-3. write back useful learnings
-4. review and promote only when appropriate
+1. install hooks once per project or user
+2. let Codex lifecycle hooks inject relevant context
+3. let `Stop` write compact project memory
+4. inspect or add memory manually only when needed
+
+The old manual `recall -> execute -> writeback` loop is still useful for debugging, but it should not be the default skill workflow.
+
+---
 
 ## Example Skill Prompt
 
 ```md
 # Skill: Oazen-Assisted Task Execution
 
-Before making changes:
+Before work starts:
 
-1. Run `oazen recall "<task>" --cwd <working-dir> --format codex`
-2. Use the returned context packet as task context
+1. Assume Oazen project hooks may already be installed.
+2. Do not manually run recall unless the user asks for debugging or the hook path is unavailable.
+3. Use the injected `OAZEN PROJECT CONTEXT` when it appears.
+
+During work:
+
+1. Keep edits scoped to the resolved project.
+2. Prefer focused validation commands.
+3. Avoid adding unrelated project details to memory manually.
 
 After completing the task:
 
-1. Save a short session summary to a file
-2. Run `oazen writeback --file <summary-file> --cwd <working-dir>`
-3. Run `oazen review`
-4. Only `approve` safe inbox memories
-5. `promote` only durable reviewed memories
+1. Let the Codex `Stop` hook update Oazen memory.
+2. If needed, inspect memory with `oazen memory list`.
+3. Add explicit durable facts with `oazen memory add "<fact>" --type <type>` only when the hook input missed them.
 ```
 
-## Example Session Flow
+---
+
+## Setup Flow
+
+Project install:
+
+```bash
+oazen install codex --scope project
+```
+
+Smoke test:
+
+```bash
+echo '{}' | oazen hook codex session-start
+```
+
+Disable hooks:
+
+```bash
+oazen uninstall codex --scope project
+```
+
+---
+
+## Manual Memory Inspection
+
+```bash
+oazen memory list --cwd /workspace/repo/packages/app
+oazen memory show <memory-id>
+oazen memory add "Always run adapter hook tests before finishing Codex hook changes." --cwd /workspace/repo/packages/app --type project_rule
+oazen memory compact --cwd /workspace/repo/packages/app
+```
+
+## Adapter Notes
+
+- `hook codex session-start` is the startup/resume context path.
+- `hook codex user-prompt-submit` is the prompt-relevant context path.
+- `hook codex stop` is the compact writeback path.
+- Hook commands return valid JSON and fail open by default.
+- `additionalContext` is optional and should be absent when no useful project context exists.
+- The injected text uses the `OAZEN PROJECT CONTEXT` format.
+
+## Scope Notes
+
+- Use the real working directory when invoking manual memory commands.
+- In a monorepo, explicit `projectId` can be configured with `.oazen.json` or `.oazen/config.json`.
+- Hook memory must never mix project A records into project B retrieval.
+
+## Legacy Debug Flow
+
+Use this only when hooks are unavailable or when debugging old recall behavior:
 
 ```bash
 oazen recall "fix parser retries" --cwd /workspace/repo/packages/app --format codex
-
-# ... do the implementation work ...
-
 oazen writeback --file /tmp/oazen-session.txt --cwd /workspace/repo/packages/app
 oazen review
 oazen approve <safe-memory-id>
 oazen promote <durable-memory-id>
 ```
-
-## Adapter Notes
-
-- `recall --format codex` is the prompt-facing renderer
-- `review` returns `memory_query_result`
-- `writeback`, `approve`, `reject`, `promote`, `compact`, `merge`, and `forget` return `memory_mutation_result`
-- failed mutation actions return `memory_action_error` on stderr
-
-## Scope Notes
-
-- use the real working directory for `--cwd`
-- in a monorepo, project-scoped memories should stay inside the current package
-- repo memories can still be shared across sibling packages when appropriate

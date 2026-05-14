@@ -2,16 +2,26 @@
 
 ## 1. What Oazen Is
 
-Oazen is a **local memory runtime for coding agents**.
+Oazen is a **hooks-driven project memory sidecar for AI coding agents**.
 
-Its purpose is to help coding agents remember the right things, forget the wrong things, and keep context useful over time without forcing users to manage memory manually.
+Its purpose is to help Codex, Claude Code, Cursor, and future coding agents remember the right project context without turning memory into a global blob.
 
 Oazen is designed to be:
+
 - local-first
-- low-friction
+- project-scoped
+- hooks-driven
+- adapter-friendly
 - inspectable
-- layered
 - safe by default
+
+Oazen is not:
+
+- a replacement for Codex, Claude Code, or Cursor
+- a general chatbot
+- a heavy governance platform
+- a cloud-first memory service
+- a global memory pool shared across all projects
 
 ---
 
@@ -19,279 +29,369 @@ Oazen is designed to be:
 
 Oazen solves a simple problem:
 
-> Coding agents forget useful context, repeat mistakes, and mix unrelated project knowledge together.
+> Coding agents forget useful project context, repeat explanations, and sometimes mix unrelated project knowledge together.
 
-Oazen acts as an external memory layer that can:
-- recall relevant memory before a task
-- write back useful learnings after a task
-- merge similar memories
-- compress memory into denser summaries
-- decay or forget stale information
+Oazen acts as a local sidecar that can:
 
-The product should feel lightweight. Users should not need to learn a complex memory system to benefit from it.
+- resolve the current project
+- retrieve only relevant project memory
+- inject compact context through agent lifecycle hooks
+- summarize turn outcomes through stop hooks
+- store durable project facts locally
+- provide lightweight policy hints without becoming noisy
+
+The product should feel like infrastructure under the agent, not a second assistant users must manage.
 
 ---
 
 ## 3. Current Scope
 
 ### Already in the current design
-- CLI-based local memory runtime
-- memory writeback from session logs
-- recall before task execution
-- layered memory structure
-- inbox / session / fact / core lifecycle
-- memory merge and deduplication
-- memory compression
-- memory decay and forgetting
-- review / promote / reject flow
-- Codex integration path through adapter-style usage
+
+- Codex hook adapter for `SessionStart`, `UserPromptSubmit`, and `Stop`
+- normalized internal hook event model
+- project resolver with Git and cwd fallback
+- local JSON project memory store
+- project-scoped retrieval with strict context budgets
+- compact `OAZEN PROJECT CONTEXT` injection format
+- hook config install/uninstall commands
+- fail-open behavior by default
+- local logs with secret redaction
+- manual memory inspection and add/compact commands
+- legacy recall/writeback lifecycle for debugging and benchmark support
 
 ### Current philosophy
+
+- hooks first
 - keep the core small
-- keep interaction minimal
-- keep user control visible
-- avoid unnecessary UI and configuration
+- fail open unless strict mode is explicitly configured later
+- avoid cloud sync and external LLM calls in the MVP
+- preserve project boundaries before improving recall cleverness
+- prefer deterministic heuristics over hidden automation
 
 ### MVP boundary
-- Phase 0-4 plus minimal Phase 5 define the practical MVP boundary
-- evaluation and benchmark tooling support proof and regression, but are not themselves the product core
-- after the core pipeline is stable, default to verification-first instead of broadening feature scope
+
+The MVP is Codex-first, but not Codex-only:
+
+- Codex adapter is implemented first.
+- Claude Code, Cursor, and MCP adapters should map into the same normalized hook model later.
+- Vector search, cloud sync, UI, and external summarization are out of scope for the first pass.
 
 ---
 
-## 4. Core Principles
+## 4. Core Architecture
 
-### 4.1 Low cognitive load
-Users should not need to understand the full memory system to use Oazen.
+```text
+Agent lifecycle event
+  -> hook adapter
+  -> Oazen runtime
+  -> project resolver
+  -> memory retriever / policy engine / summarizer
+  -> hook output back to the agent
+```
 
-The default workflow should be simple:
-1. recall
-2. execute
-3. write back
-4. compress
-5. forget
+Internal normalized events:
 
-### 4.2 Local by default
+- `onSessionStart`
+- `onUserPrompt`
+- `beforeToolUse`
+- `afterToolUse`
+- `onPermissionRequest`
+- `onStop`
+- `onMemoryCompact`
+- `onSessionEnd`
+
+Codex maps its hook payloads into these events. Later adapters should do the same instead of duplicating runtime behavior.
+
+---
+
+## 5. Core Principles
+
+### 5.1 Low cognitive load
+
+Users should install hooks once and then mostly ignore Oazen.
+
+### 5.2 Local by default
+
 Memory should stay local unless the user explicitly chooses otherwise.
 
-### 4.3 Inspectable and reversible
-Users should be able to inspect what was remembered, merged, compressed, promoted, or forgotten.
+### 5.3 Project isolation first
 
-### 4.4 Layered memory
-Not all memory has the same lifespan or reliability.
+Project A memory must not appear in Project B context.
 
-### 4.5 Controlled automation
-Automation should improve quality without becoming opaque.
+### 5.4 Inspectable and reversible
 
----
+Users should be able to inspect what Oazen stored and remove or compact it later.
 
-## 5. Memory Model
+### 5.5 Controlled automation
 
-### 5.1 Memory layers
-- **inbox**: raw extracted candidates, not yet trusted
-- **session**: short-term working memory
-- **fact**: stable, useful recurring knowledge
-- **core**: rare, durable, high-confidence memory
+Automation should improve the coding flow without blocking normal agent work.
 
-### 5.2 Memory types
-- preference
-- fact
-- workflow
-- warning
-- state
-- decision
+### 5.6 Fail open
 
-### 5.3 Memory lifecycle
-A memory may move through this path:
-
-`inbox -> session -> fact -> core`
-
-Or it may be:
-- rejected
-- archived
-- compressed into a new memory
-- forgotten over time
-
-### 5.4 Memory operations
-- recall
-- writeback
-- merge
-- compress
-- promote
-- reject
-- forget
+Hook failure should not make the coding agent fragile.
 
 ---
 
-## 6. Current User Experience
+## 6. Project Identity
 
-Oazen should behave like a quiet background utility rather than a heavy platform.
+Project identity should be stable enough to avoid cross-project pollution.
 
-### Desired experience
-- minimal prompts
-- minimal setup
-- no forced learning curve
-- no complex dashboards before value is visible
-- memory quality improves gradually in the background
+Recommended identity fields:
 
-### Current preferred interaction style
-- command line first
-- file-driven workflows
-- optional review for uncertain memory
-- no unnecessary clicks or nested settings
-- prefer validating the current flow over adding adjacent features once the core path is end-to-end usable
+- `projectId`
+- `repoRoot`
+- `gitRemote`
+- `currentBranch`
+- `workspaceName`
+- `createdAt`
+- `updatedAt`
 
----
+Resolution order:
 
-## 7. Future Vision
+1. explicit Oazen project ID from config
+2. Git remote URL
+3. Git repo root
+4. absolute cwd fallback
 
-### 7.1 Multi-agent support
-Oazen should eventually support multiple agents sharing or partially sharing memory.
-
-Possible modes:
-- one user, multiple agents
-- one project, multiple agents
-- one agent per task type
-- shared memory pool with scoped access
-
-Goals:
-- avoid duplicated learning across agents
-- allow different agents to benefit from the same stable facts
-- keep agent-specific context separate when needed
-
-### 7.2 Project memory isolation
-Oazen should support strict boundaries between projects.
-
-Desired behavior:
-- project A memory should not leak into project B unless explicitly allowed
-- repo-scoped memory should stay local to that repo
-- global memory should only contain truly cross-project knowledge
-
-Possible scopes:
-- global
-- project
-- repo
-- session
-- agent
-
-### 7.3 Sensitive information screening
-Oazen should reduce the chance of storing sensitive content in memory.
-
-Examples of content that should be blocked, masked, or downgraded:
-- API keys
-- tokens
-- passwords
-- private file paths
-- personal data
-- secrets in logs
-- credentials embedded in prompts or session output
-
-Possible safety behavior:
-- detect and redact sensitive strings before writeback
-- refuse to promote sensitive content into long-term memory
-- keep sensitive snippets out of compression summaries
-- allow explicit user override only when appropriate
-
-### 7.4 Memory trust levels
-Not all memory should be treated equally.
-
-Future memory may include trust levels such as:
-- unverified
-- user-confirmed
-- derived
-- compressed
-- policy-blocked
-
-### 7.5 Smarter retrieval
-Oazen should eventually support better recall ranking using:
-- scope
-- recency
-- access frequency
-- stability
-- task similarity
-- agent type
-- project relevance
-
-### 7.6 Hybrid memory engine
-Long term, Oazen may combine:
-- structured memory
-- lightweight semantic retrieval
-- compression summaries
-- rule-based filtering
-- optional model-assisted extraction
-
-The key requirement is that the system remains understandable and controllable.
+If no Git repo exists, cwd-based project identity is acceptable.
 
 ---
 
-## 8. Non-goals
+## 7. Memory Model
 
-Oazen should not become:
-- a full chat app
-- a large agent framework
-- a complex workflow builder
-- a generic note-taking product
-- a heavy UI-first platform
-- a cloud-first memory store by default
+### 7.1 Hook memory record types
 
-The product should stay focused on memory quality, not interface complexity.
+- `project_summary`
+- `project_rule`
+- `decision`
+- `task_summary`
+- `known_issue`
+- `todo`
+- `user_preference`
+- `file_note`
 
----
+### 7.2 Required record fields
 
-## 9. Roadmap Phases
+- `id`
+- `projectId`
+- `type`
+- `content`
+- `source`
+- `confidence`
+- `createdAt`
+- `updatedAt`
+- `lastAccessedAt`
+- `tags`
+- `relatedFiles`
+- `branch`
+- optional TTL or decay metadata
 
-### Phase A — Working CLI
-- recall
-- writeback
-- list
-- basic storage
+### 7.3 Storage
 
-### Phase B — Memory lifecycle
-- inbox review
-- promote / reject
-- merge
-- compress
-- forget
+MVP storage can be JSON. SQLite is preferred later if concurrency or query complexity demands it.
 
-### Phase C — Scope control
-- global / project / repo isolation
-- cwd-aware recall
-- repo-aware writeback
+Default hook memory location:
 
-### Phase D — Safety layer
-- sensitive data masking
-- policy-based screening
-- safe writeback
+```text
+~/.oazen/data/project-memories.json
+```
 
-### Phase E — Multi-agent runtime
-- multiple agents
-- shared memory with boundaries
-- agent-specific memory profiles
-
-### Phase F — Desktop shell
-- optional UI for inspection and review
-- no dependency on UI for core value
+Raw full transcripts should not be stored by default.
 
 ---
 
-## 10. Success Criteria
+## 8. Runtime Behavior
+
+### 8.1 SessionStart
+
+- resolve current project
+- load project summary, rules, decisions, recent task state, known issues, TODOs, and preferences
+- return concise additional context
+
+### 8.2 UserPromptSubmit
+
+- read the user prompt from hook input
+- resolve current project
+- retrieve relevant project memories
+- avoid injecting unrelated or excessive context
+
+### 8.3 Stop
+
+- capture available final turn state from hook input
+- extract compact task summary
+- extract durable facts, decisions, rules, issues, and TODOs
+- deduplicate similar memory
+- write locally
+- avoid blocking the agent unless strict mode later enables it
+
+### 8.4 Phase 2 Hooks
+
+`PreToolUse`, `PostToolUse`, and `PermissionRequest` should remain low-noise:
+
+- detect obvious risk only
+- fail open by default
+- provide hints rather than enforcement unless strict mode is configured
+
+---
+
+## 9. Context Injection
+
+Use this compact format:
+
+```text
+OAZEN PROJECT CONTEXT
+- Project:
+- Current branch:
+Stable rules:
+- ...
+Relevant decisions:
+- ...
+Recent task state:
+- ...
+Known constraints:
+- ...
+Suggested validation:
+- ...
+```
+
+Rules:
+
+- no unrelated memories
+- no cross-project memory leakage
+- no stale memory unless marked historical
+- short bullets
+- no repeated context when nothing relevant changed
+
+---
+
+## 10. CLI Surface
+
+Primary hook commands:
+
+```bash
+oazen hook codex session-start
+oazen hook codex user-prompt-submit
+oazen hook codex stop
+oazen hook codex pre-tool-use
+oazen hook codex post-tool-use
+oazen hook codex permission-request
+```
+
+Install commands:
+
+```bash
+oazen install codex --scope project
+oazen install codex --scope user
+oazen uninstall codex --scope project
+oazen uninstall codex --scope user
+```
+
+Memory commands:
+
+```bash
+oazen memory list
+oazen memory show <id>
+oazen memory add "<content>" --type project_rule
+oazen memory compact
+```
+
+Debug and legacy commands remain available:
+
+```bash
+oazen recall
+oazen writeback
+oazen review
+oazen approve
+oazen promote
+oazen codex preload
+oazen codex run
+```
+
+---
+
+## 11. Safety and Privacy
+
+Default behavior:
+
+- no network calls
+- no cloud sync
+- no external LLM calls
+- no raw transcript persistence
+- obvious secrets redacted from logs
+- hook errors fail open
+
+Strict mode may later enable:
+
+- blocking risky commands
+- requiring tests before stop
+- requiring memory update before stop
+- blocking cross-project memory injection
+
+Strict mode must be explicit and off by default.
+
+---
+
+## 12. Roadmap Phases
+
+### Phase A — Hooks-first Codex MVP
+
+- project resolver
+- local hook memory store
+- Codex hook adapter
+- install/uninstall config generator
+- fail-open runtime
+- core tests
+
+### Phase B — Retrieval and compaction hardening
+
+- better dedupe
+- decay / TTL
+- compact project summaries
+- relevance scoring improvements
+
+### Phase C — Phase 2 hooks
+
+- low-noise tool observation
+- validation outcome tracking
+- permission request hints
+- strict mode config gates
+
+### Phase D — Multi-agent adapters
+
+- Claude Code adapter
+- Cursor adapter
+- MCP adapter
+- agent-specific policies
+
+### Phase E — Optional UI and richer storage
+
+- optional inspection UI
+- SQLite migration if needed
+- import/export tooling
+
+---
+
+## 13. Success Criteria
 
 Oazen is successful if:
-- users can reuse useful context without re-explaining it
-- memory quality improves over time
-- unrelated projects do not pollute each other
-- sensitive information is not casually stored
-- users do not feel forced into a complex system
-- the tool remains easy to trust and easy to inspect
+
+- users can resume project work without repeating basic context
+- injected context is compact and relevant
+- memories from unrelated projects never appear
+- hook failures do not break agent workflows
+- useful durable facts are stored without raw transcript bloat
+- privacy guarantees remain simple and true
+- users can inspect and disable the system easily
 
 ---
 
-## 11. Product Positioning
+## 14. Product Positioning
 
 Oazen is not trying to be the biggest agent platform.
 
-It is trying to be the quiet, reliable memory layer underneath agent workflows.
+It is trying to be the quiet, reliable project memory layer underneath agent workflows.
 
 The product promise is:
 
-> remember what matters, forget what does not, and stay out of the way.
+> remember what matters for this project, forget what does not, and stay out of the way.

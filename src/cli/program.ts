@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { formatCodexContextPacket } from "../adapters/codex";
 import { approveMemory } from "../commands/approve";
 import { compressMemories } from "../commands/compress";
+import { codexInteractive, codexPreload, codexRun } from "../commands/codex";
 import { forgetWeakMemories } from "../commands/forget";
 import { mergeRelatedMemories } from "../commands/merge";
 import { promoteMemory } from "../commands/promote";
@@ -10,7 +11,11 @@ import { rejectMemory } from "../commands/reject";
 import { listInbox } from "../commands/review";
 import { writebackFromFile } from "../commands/writeback";
 import { buildCliActionError } from "../core/contracts";
+import { compareBenchmarkReports } from "../eval/compare-reports";
 import { MemoryScope } from "../core/types";
+import { runCodexHookCommand, parseCodexHookName } from "./hookCommands";
+import { installCodex, parseInstallScope, uninstallCodex } from "./installCommands";
+import { addProjectMemory, compactProjectMemories, listProjectMemories, showProjectMemory } from "./memoryCommands";
 import { loadMemories } from "../storage/memory-store";
 
 const program = new Command();
@@ -20,7 +25,11 @@ async function runCliAction(action: string, work: () => Promise<void>): Promise<
     await work();
   } catch (error) {
     console.error(JSON.stringify(buildCliActionError(action, error), null, 2));
-    process.exit(1);
+    const exitCode =
+      typeof error === "object" && error !== null && "exitCode" in error
+        ? Number((error as { exitCode?: unknown }).exitCode)
+        : 1;
+    process.exit(Number.isFinite(exitCode) ? exitCode : 1);
   }
 }
 
@@ -35,12 +44,14 @@ program
   .option("--cwd <path>", "scope inference cwd")
   .option("--format <format>", "output format: json or codex", "json")
   .action(async (task, options) => {
-    const result = await recall(task, { cwd: options.cwd });
-    if (options.format === "codex") {
-      console.log(formatCodexContextPacket(result));
-      return;
-    }
-    console.log(JSON.stringify(result, null, 2));
+    await runCliAction("recall", async () => {
+      const result = await recall(task, { cwd: options.cwd });
+      if (options.format === "codex") {
+        console.log(formatCodexContextPacket(result));
+        return;
+      }
+      console.log(JSON.stringify(result, null, 2));
+    });
   });
 
 program
@@ -50,11 +61,193 @@ program
   .option("--cwd <path>", "scope inference cwd")
   .option("--scope <scope>", "writeback scope: auto, global, project, repo", "auto")
   .action(async (options) => {
-    const result = await writebackFromFile(options.file, {
-      cwd: options.cwd,
-      scope: options.scope as MemoryScope | "auto",
+    await runCliAction("writeback", async () => {
+      const result = await writebackFromFile(options.file, {
+        cwd: options.cwd,
+        scope: options.scope as MemoryScope | "auto",
+      });
+      console.log(JSON.stringify(result, null, 2));
     });
-    console.log(JSON.stringify(result, null, 2));
+  });
+
+const codexProgram = program.command("codex").description("Codex sidecar workflow helpers");
+const evalProgram = program.command("eval").description("Benchmark and evaluation helpers");
+const hookProgram = program.command("hook").description("Agent hook entrypoints");
+const installProgram = program.command("install").description("Install agent hook configuration");
+const uninstallProgram = program.command("uninstall").description("Uninstall agent hook configuration");
+const memoryProgram = program.command("memory").description("Project-scoped hook memory");
+
+hookProgram
+  .command("codex")
+  .description("Run a Codex hook adapter command")
+  .argument("<event>", "session-start, user-prompt-submit, stop, pre-tool-use, post-tool-use, permission-request")
+  .action(async (event) => {
+    await runCodexHookCommand(parseCodexHookName(event));
+  });
+
+installProgram
+  .command("codex")
+  .description("Install Codex hook configuration")
+  .option("--scope <scope>", "project or user", "project")
+  .action(async (options) => {
+    await runCliAction("install-codex", async () => {
+      const result = await installCodex(parseInstallScope(options.scope));
+      console.log(JSON.stringify(result, null, 2));
+    });
+  });
+
+uninstallProgram
+  .command("codex")
+  .description("Uninstall Oazen-managed Codex hook configuration")
+  .option("--scope <scope>", "project or user", "project")
+  .action(async (options) => {
+    await runCliAction("uninstall-codex", async () => {
+      const result = await uninstallCodex(parseInstallScope(options.scope));
+      console.log(JSON.stringify(result, null, 2));
+    });
+  });
+
+program
+  .command("doctor")
+  .description("Check Oazen hook runtime basics")
+  .action(async () => {
+    await runCliAction("doctor", async () => {
+      console.log(JSON.stringify({
+        version: "1",
+        kind: "doctor_result",
+        cwd: process.cwd(),
+        node: process.version,
+        strictMode: false,
+        network: "disabled-by-default",
+      }, null, 2));
+    });
+  });
+
+memoryProgram
+  .command("list")
+  .description("List project-scoped hook memories")
+  .option("--cwd <path>", "project cwd")
+  .action(async (options) => {
+    await runCliAction("memory-list", async () => {
+      console.log(JSON.stringify(await listProjectMemories(options.cwd), null, 2));
+    });
+  });
+
+memoryProgram
+  .command("show")
+  .description("Show one project-scoped hook memory")
+  .argument("<id>", "memory id")
+  .action(async (id) => {
+    await runCliAction("memory-show", async () => {
+      console.log(JSON.stringify(await showProjectMemory(id), null, 2));
+    });
+  });
+
+memoryProgram
+  .command("add")
+  .description("Add one project-scoped hook memory")
+  .argument("<content>", "memory content")
+  .option("--cwd <path>", "project cwd")
+  .option("--type <type>", "project memory type", "file_note")
+  .option("--tags <tags>", "comma-separated tags")
+  .action(async (content, options) => {
+    await runCliAction("memory-add", async () => {
+      console.log(JSON.stringify(await addProjectMemory(content, options), null, 2));
+    });
+  });
+
+memoryProgram
+  .command("compact")
+  .description("Compact project-scoped hook memories")
+  .option("--cwd <path>", "project cwd")
+  .action(async (options) => {
+    await runCliAction("memory-compact", async () => {
+      console.log(JSON.stringify(await compactProjectMemories(options.cwd), null, 2));
+    });
+  });
+
+codexProgram
+  .command("interactive")
+  .description("Preload project context and start an interactive Codex session")
+  .argument("[command...]", "optional command to run after preload")
+  .allowUnknownOption(true)
+  .option("--cwd <path>", "scope inference cwd")
+  .option("--task <task>", "recall task description", "continue work in this project")
+  .option("--packet-file <path>", "write the packet to this path")
+  .option("--session-file <path>", "write combined command output to this file")
+  .option("--skip-writeback", "capture the log but skip writeback")
+  .action(async (command, options) => {
+    await runCliAction("codex-interactive", async () => {
+      const result = await codexInteractive({
+        cwd: options.cwd,
+        task: options.task,
+        packetFile: options.packetFile,
+        sessionFile: options.sessionFile,
+        skipWriteback: options.skipWriteback,
+        command,
+      });
+
+      console.log(JSON.stringify(result, null, 2));
+    });
+  });
+
+codexProgram
+  .command("preload")
+  .description("Recall context and emit a Codex-ready packet")
+  .argument("<task>", "task description")
+  .option("--cwd <path>", "scope inference cwd")
+  .option("--packet-file <path>", "write the packet to this path")
+  .option("--format <format>", "output format: packet or json", "packet")
+  .action(async (task, options) => {
+    await runCliAction("codex-preload", async () => {
+      const result = await codexPreload(task, {
+        cwd: options.cwd,
+        packetFile: options.packetFile,
+      });
+
+      if (options.format === "json") {
+        console.log(JSON.stringify(result, null, 2));
+        return;
+      }
+
+      console.log(result.packet);
+    });
+  });
+
+evalProgram
+  .command("compare")
+  .description("Compare two existing benchmark run reports")
+  .argument("<baselineReport>", "baseline benchmark report path")
+  .argument("<oazenReport>", "Oazen benchmark report path")
+  .action(async (baselineReport, oazenReport) => {
+    await runCliAction("eval-compare", async () => {
+      const result = compareBenchmarkReports(baselineReport, oazenReport);
+      console.log(JSON.stringify(result, null, 2));
+    });
+  });
+
+codexProgram
+  .command("run")
+  .description("Preload Codex context, run a command, and write back the session log")
+  .argument("<task>", "task description")
+  .argument("[command...]", "command to run after preload")
+  .allowUnknownOption(true)
+  .option("--cwd <path>", "scope inference cwd")
+  .option("--packet-file <path>", "write the packet to this path")
+  .option("--session-file <path>", "write combined command output to this file")
+  .option("--skip-writeback", "capture the log but skip writeback")
+  .action(async (task, command, options) => {
+    await runCliAction("codex-run", async () => {
+      const result = await codexRun(task, {
+        cwd: options.cwd,
+        packetFile: options.packetFile,
+        sessionFile: options.sessionFile,
+        skipWriteback: options.skipWriteback,
+        command,
+      });
+
+      console.log(JSON.stringify(result, null, 2));
+    });
   });
 
 program

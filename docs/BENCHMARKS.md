@@ -2,6 +2,8 @@
 
 This document defines the first repeatable benchmark flow for Oazen.
 
+The automated benchmark still measures retrieval quality using deterministic fixtures. It does not fully simulate Codex lifecycle hooks yet. Hook behavior should be verified with `npm test` and the A/B workflow in [AB_TESTING_GUIDE.md](AB_TESTING_GUIDE.md).
+
 ## Goals
 
 The current benchmark layer focuses on the metrics that are easy to automate and directly tied to project-scoped memory:
@@ -36,10 +38,10 @@ npm run test:benchmark:codex-exported
 npm run test:benchmark:codex-exported:strict
 ```
 
-The runner lives at [src/eval/run-benchmark.ts](src/eval/run-benchmark.ts) and currently uses:
+The runner lives at [../src/eval/run-benchmark.ts](../src/eval/run-benchmark.ts) and currently uses:
 
-* [fixtures/benchmark/tasks.json](fixtures/benchmark/tasks.json)
-* [fixtures/benchmark/codex-exported.json](fixtures/benchmark/codex-exported.json)
+* [../fixtures/benchmark/tasks.json](../fixtures/benchmark/tasks.json)
+* [../fixtures/benchmark/codex-exported.json](../fixtures/benchmark/codex-exported.json)
 
 ## Benchmark Contract
 
@@ -94,17 +96,26 @@ The runner also supports:
 * `--output <path>` to write the full summary report
 * `--task-output-dir <dir>` to write one JSON report per task
 
+To compare two existing benchmark reports, use:
+
+```bash
+oazen eval compare /path/to/baseline.json /path/to/oazen.json
+```
+
+This prints a `benchmark_compare_result` JSON payload for deterministic A/B inspection.
+
 These outputs are intended for local inspection and debugging. Do not commit them.
 
 ## Resume Benchmark
 
-`Time to Resume` should be measured separately with a human-in-the-loop workflow:
+`Time to Resume` should be measured separately with a human-in-the-loop hook workflow:
 
 1. Open a project after a gap.
 2. Run the task once without Oazen context.
-3. Run the same task with `oazen recall "<task>" --format codex`.
-4. Measure time from project open to first useful action.
-5. Record whether later rework happened because of missing or wrong memory.
+3. Run the same task with Oazen Codex hooks installed.
+4. Capture `hook-session-start.json`, `hook-user-prompt-submit.json`, and `hook-stop.json` where possible.
+5. Measure time from project open to first useful action.
+6. Record whether later rework happened because of missing or wrong memory.
 
 Recommended logging fields:
 
@@ -114,13 +125,16 @@ Recommended logging fields:
 * `oazenTimeToResumeMs`
 * `baselineReworkEvents`
 * `oazenReworkEvents`
+* `additionalContextChars`
+* `stopRecordsWritten`
 * notes about wrong-memory contamination or missing-key-memory misses
 
 ## Next Expansions
 
 The next benchmark improvements should be:
 
-1. add even noisier imported-memory fixtures with borderline irrelevant same-project memories
-2. export a reproducible fixture generator from isolated Codex-memory test runs
-3. add a manual resume benchmark log format and report template
-4. correlate benchmark misses with recall score breakdown fields
+1. add hook-aware fixture reports for `SessionStart`, `UserPromptSubmit`, and `Stop`
+2. add even noisier imported-memory fixtures with borderline irrelevant same-project memories
+3. export a reproducible fixture generator from isolated Codex-memory test runs
+4. add a manual resume benchmark log format and report template
+5. correlate benchmark misses with recall score breakdown fields
