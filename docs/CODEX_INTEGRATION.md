@@ -1,143 +1,337 @@
-# Codex Adapter Workflow
+# Codex Hooks Integration
 
-This document describes the stable Oazen flow for Codex-style agents.
+This document describes the current first-class Oazen flow for Codex.
+
+Oazen is now a hooks-driven project memory sidecar. The preferred Codex path is:
+
+```text
+Codex lifecycle event
+  -> Codex hook command
+  -> Oazen runtime
+  -> project resolver
+  -> project memory store / retriever / compactor
+  -> compact hook output back to Codex
+```
+
+The older `oazen codex preload/run/interactive` commands still exist for manual debugging, benchmarks, and migration work, but they are no longer the primary integration model.
 
 See also: [Sample Skill Workflow](SKILL_WORKFLOW.md)
 
-## Recall Output
+---
 
-`oazen recall "<task>"` returns a `recall_result` JSON payload with:
+## Install Codex Hooks
 
-- `kind: "recall_result"`
-- `action: "recall"`
-- `version`
-- `timestamp`
-- `task`
-- `scope`
-- `counts`
-- `tokenEstimate`
-- `candidates`
-- `selected`
-- `memories`
-- grouped arrays: `core`, `facts`, `workflows`, `warnings`, `state`
+Project-scoped install:
 
-`oazen recall "<task>" --format codex` returns a text packet intended for direct prompt injection.
+```bash
+oazen install codex --scope project
+```
 
-## Context Packet Contract
+This creates or updates:
 
-Each recalled memory includes:
+```text
+.codex/hooks.json
+```
 
-- `id`
-- `title`
-- `layer`
-- `kind`
-- `scope`
-- `scopeKey`
-- `content`
-- `score`
-- `scoreBreakdown`
-- `sensitivity`
+User-scoped install:
 
-This contract is stable enough for Codex adapters to consume directly.
+```bash
+oazen install codex --scope user
+```
 
-## Mutation Contract
+This writes:
 
-`review` returns:
+```text
+~/.codex/hooks.json
+```
 
-- `version`
-- `kind: "memory_query_result"`
-- `action: "review"`
-- `timestamp`
-- `counts`
-- `items`
+Oazen does not blindly overwrite existing hook files. If a hooks file already exists, it creates a `.bak` backup and preserves unrelated hook entries.
 
-Each `items[]` entry is a stable `MemorySummary` with:
+If your Codex build requires an explicit hooks flag, enable hooks in `~/.codex/config.toml` according to your local Codex configuration. Oazen does not mutate `config.toml`.
 
-- `id`
-- `layer`
-- `kind`
-- `scope`
-- `scopeKey`
-- `title`
-- `content`
-- `status`
-- `reviewState`
-- `sensitivity`
-- `restrictedToInbox`
-- `strength`
-- `updatedAt`
+Uninstall project hooks:
 
-`writeback`, `approve`, `reject`, `promote`, `compact`, `merge`, and `forget` return:
+```bash
+oazen uninstall codex --scope project
+```
 
-- `version`
-- `kind: "memory_mutation_result"`
-- `action`
-- `timestamp`
-- `counts`
-- `changes`
+---
 
-`writeback` also includes:
+## Generated Hook Entries
 
-- `scope`
-- `blocked`
+Project install generates these active events:
 
-Each `changes[]` entry contains:
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "oazen hook codex session-start",
+            "timeout": 10,
+            "statusMessage": "Loading Oazen project memory"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "oazen hook codex user-prompt-submit",
+            "timeout": 10,
+            "statusMessage": "Retrieving Oazen context"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "oazen hook codex stop",
+            "timeout": 30,
+            "statusMessage": "Updating Oazen memory"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
 
-- `before`
-- `after`
+Phase 2 events are represented in the runtime model and CLI surface, but are intentionally conservative:
 
-Both `before` and `after` use the same `MemorySummary` shape. For create-like changes, `before` is `null`.
+```bash
+oazen hook codex pre-tool-use
+oazen hook codex post-tool-use
+oazen hook codex permission-request
+```
 
-When one of these commands fails, stderr returns:
+They currently fail open and are reserved for low-noise policy hints and activity observation.
 
-- `version`
-- `kind: "memory_action_error"`
-- `action`
-- `timestamp`
-- `error.message`
+---
 
-## Standard Usage Flow
+## Hook Commands
 
-1. Recall:
+Each hook command:
 
-   `oazen recall "fix parser retries" --cwd /path/to/project --format codex`
+- reads JSON from stdin
+- maps the Codex payload into Oazen's normalized hook event model
+- resolves the current project
+- runs the Oazen runtime
+- prints valid JSON
+- exits `0` unless the CLI itself cannot start
+- fails open by default
 
-2. Execute:
+Smoke test:
 
-   Use the returned packet as pre-task context.
+```bash
+echo '{}' | oazen hook codex session-start
+```
 
-3. Write back:
+Expected shape:
 
-   `oazen writeback --file /path/to/session.log --cwd /path/to/project`
+```json
+{
+  "continue": true,
+  "decision": "none",
+  "metadata": {
+    "projectId": "project_..."
+  }
+}
+```
 
-4. Review:
+If useful context is found, the output includes `additionalContext`.
 
-   `oazen review`
+---
 
-5. Approve safe inbox items:
+## Supported Codex Events
 
-   `oazen approve <memory-id>`
+### SessionStart
 
-6. Promote reviewed durable items:
+Command:
 
-   `oazen promote <memory-id>`
+```bash
+oazen hook codex session-start
+```
 
-For adapters, treat `review.items` as the candidate queue and `mutation.changes` as the authoritative state transition log.
-For `writeback`, use `counts.created`, `counts.blocked`, `scope`, and `blocked[]` for ingestion bookkeeping.
-For `recall`, treat `selected[]` as the canonical injected context, `candidates[]` as the retrieval pool, and `tokenEstimate` as the context-size metric source.
+Behavior:
 
-## Lifecycle Constraints
+- resolves the current project
+- loads project summary, stable rules, decisions, task state, known issues, TODOs, and preferences
+- injects compact context only when memories exist
 
-- `writeback` creates `inbox` memories with `pending` review
-- `approve` moves safe `inbox` memories to `session`
-- `promote` moves `session -> fact -> core`
-- `reject` marks a memory rejected and removes it from active recall
-- `merge` only merges compatible active memories with the same scope identity
-- `compact` only compresses approved non-inbox, non-core memories
-- `forget` archives weak active memories over time
+### UserPromptSubmit
 
-## Safety Constraints
+Command:
 
-- blocked secrets never persist
-- redacted privacy-heavy content stays inbox-only
-- inbox-only sensitive memories cannot be approved or promoted
+```bash
+oazen hook codex user-prompt-submit
+```
+
+Behavior:
+
+- reads the submitted prompt from the hook payload when available
+- resolves the current project
+- filters by `projectId` before ranking
+- injects project rules and only relevant prompt-matched memories
+- avoids repeating unrelated project state every turn
+
+### Stop
+
+Command:
+
+```bash
+oazen hook codex stop
+```
+
+Behavior:
+
+- reads the final hook payload as the available turn state
+- writes compact project-scoped memory records
+- extracts task summaries, decisions, rules, issues, TODOs, and file notes heuristically
+- deduplicates similar records by project and type
+- does not store raw full transcripts by default
+- does not block Codex in default mode
+
+---
+
+## Context Injection Format
+
+Oazen injects context in this shape:
+
+```text
+OAZEN PROJECT CONTEXT
+- Project:
+- Current branch:
+Stable rules:
+- ...
+Relevant decisions:
+- ...
+Recent task state:
+- ...
+Known constraints:
+- ...
+Suggested validation:
+- ...
+```
+
+Rules:
+
+- no memories from other projects
+- no raw transcript dumps
+- no vector search in the MVP
+- no cloud calls
+- short bullets only
+- omit context entirely when nothing useful is found
+
+---
+
+## Project Identity
+
+Oazen resolves project identity from:
+
+1. explicit `.oazen.json` or `.oazen/config.json` `projectId`
+2. Git remote URL
+3. Git repo root
+4. absolute cwd fallback
+
+The identity includes:
+
+- `projectId`
+- `repoRoot`
+- `gitRemote`
+- `currentBranch`
+- `workspaceName`
+- timestamps
+
+This is the primary guard against cross-project memory pollution.
+
+---
+
+## Local Memory Store
+
+Hook memory is stored locally under:
+
+```text
+~/.oazen/data/project-memories.json
+```
+
+Override locations:
+
+- `OAZEN_HOME`
+- `OAZEN_DATA_DIR`
+- `OAZEN_PROJECT_MEMORY_FILE`
+
+Inspect hook memory:
+
+```bash
+oazen memory list
+oazen memory show <memory-id>
+oazen memory add "Always run focused tests before finishing adapter changes." --type project_rule
+oazen memory compact
+```
+
+Hook memory record types:
+
+- `project_summary`
+- `project_rule`
+- `decision`
+- `task_summary`
+- `known_issue`
+- `todo`
+- `user_preference`
+- `file_note`
+
+---
+
+## Reliability and Privacy
+
+Default behavior:
+
+- fail open
+- no network calls
+- no cloud sync
+- no external LLM calls
+- no raw transcript persistence
+- local logs only
+- obvious secrets redacted from logs
+
+Logs are written to:
+
+```text
+~/.oazen/logs/oazen.log
+```
+
+Override with:
+
+```bash
+OAZEN_LOG_FILE=/path/to/oazen.log
+```
+
+---
+
+## Legacy Manual Commands
+
+These commands remain available:
+
+```bash
+oazen codex preload "fix parser retries" --cwd /path/to/project
+oazen codex run "fix parser retries" --cwd /path/to/project --session-file sessions/run.txt -- codex exec "{packet}\n\nTask:\n{task}"
+oazen codex interactive --cwd /path/to/project --session-file sessions/interactive.txt
+```
+
+Use them for:
+
+- debugging recall output
+- benchmark comparisons
+- manual memory experiments
+- environments where Codex hooks are unavailable
+
+For new product behavior, prefer hook commands and project-scoped hook memory.

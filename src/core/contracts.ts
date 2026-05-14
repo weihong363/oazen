@@ -100,6 +100,19 @@ export function buildMutationResult(
 }
 
 export function buildCliActionError(action: string, error: unknown): CliActionError {
+  const exitCode =
+    typeof error === "object" && error !== null && "exitCode" in error
+      ? Number((error as { exitCode?: unknown }).exitCode)
+      : undefined;
+  const sessionFile =
+    typeof error === "object" && error !== null && "sessionFile" in error
+      ? String((error as { sessionFile?: unknown }).sessionFile ?? "")
+      : undefined;
+  const writebackInputFile =
+    typeof error === "object" && error !== null && "writebackInputFile" in error
+      ? String((error as { writebackInputFile?: unknown }).writebackInputFile ?? "")
+      : undefined;
+
   return {
     version: "1",
     kind: "memory_action_error",
@@ -107,6 +120,9 @@ export function buildCliActionError(action: string, error: unknown): CliActionEr
     timestamp: Date.now(),
     error: {
       message: error instanceof Error ? error.message : String(error),
+      ...(Number.isFinite(exitCode) ? { exitCode } : {}),
+      ...(sessionFile ? { sessionFile } : {}),
+      ...(writebackInputFile ? { writebackInputFile } : {}),
     },
   };
 }

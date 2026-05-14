@@ -80,3 +80,50 @@ export type BenchmarkRunResult = {
   tasks: BenchmarkTaskResult[];
   passed: boolean;
 };
+
+export type BenchmarkMetricComparison = {
+  baseline: number | null;
+  oazen: number | null;
+  delta: number | null;
+};
+
+export type BenchmarkTaskComparisonResult = {
+  id: string;
+  query: string | null;
+  baselineMetrics: {
+    projectRecallPrecision: number | null;
+    projectRecallCoverage: number | null;
+    crossProjectContaminationRate: number | null;
+    contextTokenSaved: number | null;
+  };
+  oazenMetrics: {
+    projectRecallPrecision: number | null;
+    projectRecallCoverage: number | null;
+    crossProjectContaminationRate: number | null;
+    contextTokenSaved: number | null;
+  };
+  tokenSavingsComparison: BenchmarkMetricComparison;
+  recallPrecisionComparison: BenchmarkMetricComparison;
+  recallCoverageComparison: BenchmarkMetricComparison;
+  scopeContaminationComparison: BenchmarkMetricComparison;
+  writeback: null;
+  verdict: "better" | "neutral" | "worse";
+};
+
+export type BenchmarkCompareResult = {
+  version: "1";
+  kind: "benchmark_compare_result";
+  generatedAt: string;
+  baselineReportPath: string;
+  oazenReportPath: string;
+  fixtureName: string | null;
+  baselineMetrics: BenchmarkRunResult["primaryMetrics"] | null;
+  oazenMetrics: BenchmarkRunResult["primaryMetrics"] | null;
+  tokenSavingsComparison: BenchmarkMetricComparison;
+  recallPrecisionComparison: BenchmarkMetricComparison;
+  recallCoverageComparison: BenchmarkMetricComparison;
+  scopeContaminationComparison: BenchmarkMetricComparison;
+  writeback: null;
+  verdict: "better" | "neutral" | "worse";
+  tasks: BenchmarkTaskComparisonResult[];
+};

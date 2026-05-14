@@ -1,6 +1,6 @@
 # Oazen
 
-**A local memory runtime for coding agents.**
+**A hooks-driven project memory sidecar for coding agents.**
 
 **面向代码代理的本地记忆运行时。**
 
@@ -18,13 +18,14 @@
 
 # English Version
 
-Oazen helps coding agents remember the right things, forget the wrong things, and keep context useful over time.
+Oazen helps coding agents remember the right project context, avoid cross-project memory pollution, and keep injected context compact.
 
 It is designed to be:
 
 * local-first
+* project-scoped
 * low-friction
-* layered
+* hooks-driven
 * inspectable
 * safe by default
 
@@ -39,21 +40,31 @@ Coding agents often:
 * mix unrelated project knowledge together
 * make it hard to manage long-term memory cleanly
 
-Oazen acts as an external memory layer that can:
+Oazen acts as a local sidecar that can:
 
-* recall relevant memory before a task
-* write back useful learnings after a task
-* merge similar memories
-* compress memory into denser summaries
-* decay or forget stale information
+* resolve the current project before an agent turn
+* inject only relevant project context through hooks
+* write compact task summaries after a turn
+* keep project memories isolated by `projectId`
+* inspect, add, and compact local memories
+* fail open so hooks do not make the agent fragile
+
+Oazen is not a replacement for Codex, Claude Code, Cursor, or other coding agents. It is the quiet project-memory layer underneath them.
 
 ---
 
 ## Current Features
 
-* CLI-based local memory runtime
-* memory writeback from session logs
-* recall before task execution
+* Codex hook adapter for `SessionStart`, `UserPromptSubmit`, and `Stop`
+* normalized internal hook model for future Claude Code, Cursor, and MCP adapters
+* robust project resolver using Git root, Git remote, branch, absolute path, and optional Oazen project ID
+* local JSON project memory store with project isolation and deduplication
+* compact context injection format for Codex
+* project/user scoped Codex hook config generator
+* local logging with secret redaction
+* fail-open hook behavior by default
+* manual memory inspection and mutation commands
+* legacy CLI memory runtime
 * scope-aware recall and writeback
 * layered memory structure
 * inbox / session / fact / core lifecycle
@@ -62,20 +73,140 @@ Oazen acts as an external memory layer that can:
 * memory decay and forgetting
 * review / promote / reject flow
 * sensitive-data screening before persistence
-* adapter-style integration path for coding agents
 * fixture-based benchmark runner for recall quality and token savings
 
 ---
 
-## Minimal Workflow
+## Hooks-Based Codex Workflow
+
+Install project-scoped Codex hooks:
 
 ```bash
-oazen recall "fix parser retries" --format codex
-oazen writeback --file sessions/run.txt --cwd /path/to/project
+oazen install codex --scope project
+```
+
+This creates or updates:
+
+```text
+.codex/hooks.json
+```
+
+The generated config wires:
+
+* `SessionStart` -> `oazen hook codex session-start`
+* `UserPromptSubmit` -> `oazen hook codex user-prompt-submit`
+* `Stop` -> `oazen hook codex stop`
+
+If your Codex build requires hooks to be enabled explicitly, enable hooks in `~/.codex/config.toml` according to your local Codex configuration. Oazen does not overwrite that file.
+
+Smoke-test a hook:
+
+```bash
+echo '{}' | oazen hook codex session-start
+```
+
+The command prints valid JSON and exits `0`. If Oazen fails internally, it returns a minimal fail-open response so Codex can continue.
+
+Disable project hooks:
+
+```bash
+oazen uninstall codex --scope project
+```
+
+Project installs preserve unrelated hook entries. If `.codex/hooks.json` already exists, Oazen writes a `.bak` backup before updating it.
+
+---
+
+## Project-Scoped Memory
+
+Oazen resolves project identity from:
+
+* optional `.oazen.json` or `.oazen/config.json` `projectId`
+* Git remote URL
+* Git repo root
+* absolute project path fallback
+
+Hook memory is stored locally under `~/.oazen/data/project-memories.json` by default. Set `OAZEN_HOME`, `OAZEN_DATA_DIR`, or `OAZEN_PROJECT_MEMORY_FILE` to override the location.
+
+Memory records include:
+
+* `projectId`
+* `type`
+* `content`
+* `source`
+* `confidence`
+* timestamps
+* tags
+* related files
+* branch
+
+Inspect and edit hook memory:
+
+```bash
+oazen memory list
+oazen memory show <memory-id>
+oazen memory add "Always run focused hook tests before finishing Codex adapter changes." --type project_rule
+oazen memory compact
+```
+
+`UserPromptSubmit` filters by `projectId` first, then retrieves only useful project rules, summaries, decisions, task state, issues, and TODOs within a strict context budget.
+
+---
+
+## Hook Context Format
+
+Oazen injects compact context shaped like this:
+
+```text
+OAZEN PROJECT CONTEXT
+- Project:
+- Current branch:
+Stable rules:
+- ...
+Relevant decisions:
+- ...
+Recent task state:
+- ...
+Known constraints:
+- ...
+Suggested validation:
+- ...
+```
+
+It does not include memories from other projects and does not store raw transcripts by default.
+
+---
+
+## Privacy Guarantees
+
+Default behavior:
+
+* no network calls
+* no cloud sync
+* no external LLM calls
+* no raw transcript persistence
+* local logs only
+* obvious secrets redacted from logs
+* fail open unless strict behavior is explicitly configured later
+
+---
+
+## Legacy Manual Workflow
+
+The older manual sidecar commands remain available for debugging and benchmark work:
+
+```bash
+oazen codex preload "fix parser retries" --cwd /path/to/project
+oazen codex run "fix parser retries" --cwd /path/to/project --session-file sessions/run.txt -- codex exec "{packet}\n\nTask:\n{task}"
+oazen codex interactive --cwd /path/to/project --session-file sessions/interactive.txt
 oazen review
 oazen approve <memory-id>
 oazen promote <memory-id>
 ```
+
+`oazen codex preload --format json` returns a machine-readable sidecar payload with both the raw `recall_result` and the rendered Codex packet.
+`oazen codex run` keeps live terminal output visible, writes the same session to `--session-file`, and feeds a separate writeback input file through the existing `writeback` pipeline.
+`oazen codex interactive` uses a broad project-continuation task for recall, then starts Codex so you can decide the concrete task inside the session.
 
 ## Benchmark Workflow
 

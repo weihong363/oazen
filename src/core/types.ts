@@ -200,5 +200,38 @@ export type CliActionError = {
   timestamp: number;
   error: {
     message: string;
+    exitCode?: number;
+    sessionFile?: string;
+    writebackInputFile?: string;
   };
+};
+
+export type CodexSidecarAction = "preload" | "run";
+
+export type CodexExecutionResult = {
+  command: string[];
+  requestedCommand: string[];
+  rawSessionFile: string;
+  exitCode: number;
+  stdoutBytes: number;
+  stderrBytes: number;
+  terminalMode: "pty" | "pipe";
+};
+
+export type CodexSidecarResult = {
+  version: "1";
+  kind: "codex_sidecar_result";
+  action: CodexSidecarAction;
+  timestamp: number;
+  task: string;
+  cwd: string;
+  packet: string;
+  packetFile: string;
+  selectedMemoryIds: string[];
+  recall: RecallResult;
+  sessionFile?: string;
+  rawSessionFile?: string;
+  writebackInputFile?: string;
+  execution?: CodexExecutionResult;
+  writeback?: MemoryMutationResult;
 };
