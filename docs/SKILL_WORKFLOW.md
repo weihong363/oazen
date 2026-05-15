@@ -72,6 +72,15 @@ oazen memory add "Always run adapter hook tests before finishing Codex hook chan
 oazen memory compact --cwd /workspace/repo/packages/app
 ```
 
+For first-time setup from existing local Codex memories:
+
+```bash
+oazen import codex --scope project --cwd /workspace/repo/packages/app --dry-run
+oazen import codex --scope project --cwd /workspace/repo/packages/app
+```
+
+Review the dry-run first. Oazen should only import current-project candidates and should not copy the whole Codex memory pool into project memory.
+
 ## Adapter Notes
 
 - `hook codex session-start` is the startup/resume context path.

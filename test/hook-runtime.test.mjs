@@ -219,6 +219,73 @@ test("memory commands isolate two projects and deduplicate similar records", () 
   rmSync(tempRoot, { recursive: true, force: true });
 });
 
+test("import codex dry-run filters current project and import deduplicates records", () => {
+  const tempRoot = mkdtempSync(path.join(tmpdir(), "oazen-import-"));
+  const env = { OAZEN_HOME: path.join(tempRoot, "home") };
+  const projectA = makeProject(tempRoot, "project-a");
+  const projectB = makeProject(tempRoot, "project-b");
+  const sourceDir = path.join(tempRoot, "codex-home", "memories");
+  const rolloutDir = path.join(sourceDir, "rollout_summaries");
+
+  mkdirSync(rolloutDir, { recursive: true });
+  writeFileSync(
+    path.join(sourceDir, "MEMORY.md"),
+    [
+      "## /Users/example/other",
+      "- Other project should never be imported into project-a memory.",
+      `## ${projectA}`,
+      "- Always run focused import tests before finishing Codex memory import changes.",
+      "- We decided Codex import must stay local-first and deterministic.",
+      `## ${projectB}`,
+      "- Project B uses a separate memory boundary.",
+    ].join("\n")
+  );
+  writeFileSync(
+    path.join(rolloutDir, "project-a.md"),
+    [
+      `# Import notes for ${projectA}`,
+      "- TODO add a dry-run check for Codex memory import.",
+      "- Failure mode: imported memories must not include unrelated projects.",
+    ].join("\n")
+  );
+
+  const dryRun = JSON.parse(
+    runCli(["import", "codex", "--scope", "project", "--cwd", projectA, "--source-dir", sourceDir, "--dry-run"], {
+      env,
+    }).stdout
+  );
+  assert.equal(dryRun.kind, "codex_memory_import_result");
+  assert.equal(dryRun.dryRun, true);
+  assert.equal(dryRun.written, 0);
+  assert.equal(dryRun.candidates >= 3, true);
+  assert.equal(dryRun.records.every((record) => record.projectId === dryRun.project.projectId), true);
+  assert.ok(dryRun.records.every((record) => record.source === "codex_import"));
+  assert.ok(dryRun.records.every((record) => record.provenance.provider === "codex"));
+  assert.doesNotMatch(JSON.stringify(dryRun.records), /Project B uses a separate memory boundary/);
+
+  const emptyList = JSON.parse(runCli(["memory", "list", "--cwd", projectA], { env }).stdout);
+  assert.equal(emptyList.count, 0);
+
+  const imported = JSON.parse(
+    runCli(["import", "codex", "--scope", "project", "--cwd", projectA, "--source-dir", sourceDir], { env }).stdout
+  );
+  const importedAgain = JSON.parse(
+    runCli(["import", "codex", "--scope", "project", "--cwd", projectA, "--source-dir", sourceDir], { env }).stdout
+  );
+  const listA = JSON.parse(runCli(["memory", "list", "--cwd", projectA], { env }).stdout);
+  const listB = JSON.parse(runCli(["memory", "list", "--cwd", projectB], { env }).stdout);
+
+  assert.equal(imported.created > 0, true);
+  assert.equal(imported.written, imported.candidates);
+  assert.equal(importedAgain.created, 0);
+  assert.equal(importedAgain.updated, importedAgain.candidates);
+  assert.equal(listA.count, imported.created);
+  assert.equal(listB.count, 0);
+  assert.match(JSON.stringify(listA.records), /local-first and deterministic/);
+
+  rmSync(tempRoot, { recursive: true, force: true });
+});
+
 test("ProjectResolver resolves git repo root, branch, and cwd fallback", () => {
   const tempRoot = mkdtempSync(path.join(tmpdir(), "oazen-project-"));
   const repo = path.join(tempRoot, "repo");

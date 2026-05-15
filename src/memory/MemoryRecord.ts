@@ -12,7 +12,16 @@ export type ProjectMemorySource =
   | "session_start"
   | "user_prompt_submit"
   | "stop"
-  | "manual";
+  | "manual"
+  | "codex_import";
+
+export type MemoryProvenance = {
+  provider: "codex";
+  sourcePath: string;
+  sourceLine?: number;
+  importedAt: number;
+  excerptHash: string;
+};
 
 export type MemoryRecord = {
   id: string;
@@ -28,4 +37,5 @@ export type MemoryRecord = {
   relatedFiles: string[];
   branch?: string;
   ttlDays?: number;
+  provenance?: MemoryProvenance;
 };

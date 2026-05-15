@@ -19,6 +19,7 @@ import { addProjectMemory, compactProjectMemories, listProjectMemories, showProj
 import { loadMemories } from "../storage/memory-store";
 import { ProjectResolver } from "../project/ProjectResolver";
 import { MemoryStore } from "../memory/MemoryStore";
+import { importCodexMemories } from "../import/CodexMemoryImporter";
 
 function countByBranch(records: Array<{ branch?: string }>): Record<string, number> {
   return records.reduce<Record<string, number>>((counts, record) => {
@@ -26,6 +27,11 @@ function countByBranch(records: Array<{ branch?: string }>): Record<string, numb
     counts[branch] = (counts[branch] ?? 0) + 1;
     return counts;
   }, {});
+}
+
+function parseImportScope(scope: string): "project" {
+  if (scope !== "project") throw new Error(`Unsupported import scope: ${scope}`);
+  return "project";
 }
 
 const program = new Command();
@@ -86,6 +92,7 @@ const hookProgram = program.command("hook").description("Agent hook entrypoints"
 const installProgram = program.command("install").description("Install agent hook configuration");
 const uninstallProgram = program.command("uninstall").description("Uninstall agent hook configuration");
 const memoryProgram = program.command("memory").description("Project-scoped hook memory");
+const importProgram = program.command("import").description("Import local agent memories");
 
 hookProgram
   .command("codex")
@@ -183,6 +190,24 @@ memoryProgram
   .action(async (options) => {
     await runCliAction("memory-compact", async () => {
       console.log(JSON.stringify(await compactProjectMemories(options.cwd), null, 2));
+    });
+  });
+
+importProgram
+  .command("codex")
+  .description("Import existing Codex memories into project-scoped Oazen memory")
+  .option("--scope <scope>", "import scope: project", "project")
+  .option("--cwd <path>", "project cwd")
+  .option("--source-dir <path>", "Codex memories directory")
+  .option("--dry-run", "show candidate imports without writing")
+  .action(async (options) => {
+    await runCliAction("import-codex", async () => {
+      console.log(JSON.stringify(await importCodexMemories({
+        cwd: options.cwd,
+        scope: parseImportScope(options.scope),
+        sourceDir: options.sourceDir,
+        dryRun: options.dryRun,
+      }), null, 2));
     });
   });
 
