@@ -10,6 +10,8 @@ const repoRoot = path.resolve(process.cwd());
 const cliPath = path.join(repoRoot, "dist", "index.js");
 const require = createRequire(import.meta.url);
 const { ProjectResolver } = require("../dist/project/ProjectResolver.js");
+const { MemoryStore } = require("../dist/memory/MemoryStore.js");
+const { MemoryRetriever } = require("../dist/memory/MemoryRetriever.js");
 
 function runCli(args, options = {}) {
   const result = spawnSync("node", [cliPath, ...args], {
@@ -37,7 +39,7 @@ function makeProject(root, name) {
   return project;
 }
 
-function makeRecord(id, projectId, type, content, updatedAt, confidence) {
+function makeRecord(id, projectId, type, content, updatedAt, confidence, extra = {}) {
   return {
     id,
     projectId,
@@ -50,6 +52,7 @@ function makeRecord(id, projectId, type, content, updatedAt, confidence) {
     lastAccessedAt: updatedAt,
     tags: [],
     relatedFiles: [],
+    ...extra,
   };
 }
 
@@ -200,6 +203,7 @@ test("memory commands isolate two projects and deduplicate similar records", () 
         projectA,
         "--type",
         "project_rule",
+        "--pinned",
       ],
       { env }
     ).stdout
@@ -224,6 +228,7 @@ test("memory commands isolate two projects and deduplicate similar records", () 
   );
 
   assert.equal(addedA.created, true);
+  assert.equal(addedA.record.pinned, true);
   assert.equal(duplicateA.created, false);
 
   const listA = JSON.parse(runCli(["memory", "list", "--cwd", projectA], { env }).stdout);
@@ -282,6 +287,72 @@ test("layered memory compact preserves durable layers and archives noisy records
   assert.equal(listB.records.length, 1);
   assert.equal(listB.records[0].layer, undefined);
   assert.doesNotMatch(prompt.additionalContext ?? "", /obsolete-marker/);
+
+  rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("memory retrieval reinforces injected records and applies decay scoring", async () => {
+  const tempRoot = mkdtempSync(path.join(tmpdir(), "oazen-decay-"));
+  const env = { OAZEN_HOME: path.join(tempRoot, "home") };
+  const projectA = makeProject(tempRoot, "project-a");
+  const projectB = makeProject(tempRoot, "project-b");
+  const resolver = new ProjectResolver();
+  const projectAId = resolver.resolve(projectA).projectId;
+  const projectBId = resolver.resolve(projectB).projectId;
+  const now = Date.now();
+  const old = now - 1000 * 60 * 60 * 24 * 90;
+  const memoryFile = path.join(env.OAZEN_HOME, "data", "project-memories.json");
+
+  mkdirSync(path.dirname(memoryFile), { recursive: true });
+  writeFileSync(
+    memoryFile,
+    JSON.stringify({
+      version: "1",
+      records: [
+        makeRecord("stale", projectAId, "file_note", "parser retry policy prefers old unused notes", old, 0.7),
+        makeRecord("fresh", projectAId, "file_note", "parser retry policy uses fresh active notes", now - 1000, 0.7, {
+          accessCount: 3,
+          lastInjectedAt: now - 1000,
+        }),
+        makeRecord("pinned", projectAId, "file_note", "parser retry policy pinned historical note", old, 0.7, {
+          pinned: true,
+        }),
+        makeRecord("archived", projectAId, "file_note", "parser retry policy archived hidden note", now, 0.9, {
+          layer: "archive",
+          archivedAt: now,
+        }),
+        makeRecord("other", projectBId, "file_note", "parser retry policy other project note", now, 0.9),
+      ],
+    }),
+    "utf-8"
+  );
+
+  const retriever = new MemoryRetriever(new MemoryStore(memoryFile));
+  const retrieval = await retriever.retrieveWithDiagnostics(projectAId, "parser retry policy", 2000);
+  const ids = retrieval.memories.map((record) => record.id);
+  const fresh = retrieval.memories.find((record) => record.id === "fresh");
+  const stale = retrieval.memories.find((record) => record.id === "stale");
+  const pinned = retrieval.memories.find((record) => record.id === "pinned");
+
+  assert.equal(ids.includes("archived"), false);
+  assert.equal(ids.includes("other"), false);
+  assert.ok(fresh && stale && pinned);
+  assert.equal(fresh.score > stale.score, true);
+  assert.equal((pinned.decayScore ?? 0) >= 0.72, true);
+  assert.equal((stale.decayScore ?? 1) < (fresh.decayScore ?? 0), true);
+  assert.equal(typeof retrieval.diagnostics.decayScoreMin, "number");
+  assert.equal(typeof retrieval.diagnostics.decayScoreMax, "number");
+
+  const prompt = hook("user-prompt-submit", { cwd: projectA, prompt: "parser retry policy fresh active" }, env);
+  const recordsAfterPrompt = JSON.parse(readFileSync(memoryFile, "utf-8")).records;
+  const reinforced = recordsAfterPrompt.find((record) => record.id === "fresh");
+  const archived = recordsAfterPrompt.find((record) => record.id === "archived");
+
+  assert.equal(prompt.metadata.decayScoreMax <= 1, true);
+  assert.equal(reinforced.accessCount >= 4, true);
+  assert.equal(typeof reinforced.lastInjectedAt, "number");
+  assert.equal(reinforced.decayScore, 1);
+  assert.equal(archived.accessCount ?? 0, 0);
 
   rmSync(tempRoot, { recursive: true, force: true });
 });

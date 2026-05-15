@@ -50,7 +50,7 @@ export async function showProjectMemory(id: string): Promise<Record<string, unkn
 
 export async function addProjectMemory(
   content: string,
-  options: { cwd?: string; type?: string; tags?: string }
+  options: { cwd?: string; type?: string; tags?: string; pinned?: boolean }
 ): Promise<Record<string, unknown>> {
   if (!content.trim()) throw new Error("Memory content is required");
 
@@ -69,6 +69,7 @@ export async function addProjectMemory(
     tags,
     relatedFiles: [],
     branch: project.currentBranch,
+    pinned: options.pinned ?? false,
   });
 
   return {

@@ -36,6 +36,10 @@ function normalizeRecord(input: Partial<MemoryRecord>): MemoryRecord | null {
     createdAt: input.createdAt ?? now,
     updatedAt: input.updatedAt ?? now,
     lastAccessedAt: input.lastAccessedAt ?? now,
+    accessCount: input.accessCount ?? 0,
+    lastInjectedAt: input.lastInjectedAt,
+    decayScore: input.decayScore,
+    pinned: input.pinned ?? false,
     tags: input.tags ?? [],
     relatedFiles: input.relatedFiles ?? [],
     branch: input.branch,
@@ -107,6 +111,10 @@ export class MemoryStore {
         layer: incoming.layer ?? existing.layer,
         archivedAt: incoming.archivedAt ?? existing.archivedAt,
         archiveReason: incoming.archiveReason ?? existing.archiveReason,
+        accessCount: incoming.accessCount ?? existing.accessCount,
+        lastInjectedAt: incoming.lastInjectedAt ?? existing.lastInjectedAt,
+        decayScore: incoming.decayScore ?? existing.decayScore,
+        pinned: incoming.pinned ?? existing.pinned,
         updatedAt: incoming.updatedAt,
         lastAccessedAt: incoming.lastAccessedAt,
       };
@@ -130,6 +138,9 @@ export class MemoryStore {
     for (const record of records) {
       if (!idSet.has(record.id)) continue;
       record.lastAccessedAt = now;
+      record.lastInjectedAt = now;
+      record.accessCount = (record.accessCount ?? 0) + 1;
+      record.decayScore = 1;
       changed = true;
     }
 

@@ -152,6 +152,7 @@ Memory records include:
 * tags
 * related files
 * branch
+* access metadata such as `accessCount`, `lastInjectedAt`, `decayScore`, and `pinned`
 * optional provenance for imported memories
 
 Inspect and edit hook memory:
@@ -159,7 +160,7 @@ Inspect and edit hook memory:
 ```bash
 oazen memory list
 oazen memory show <memory-id>
-oazen memory add "Always run focused hook tests before finishing Codex adapter changes." --type project_rule
+oazen memory add "Always run focused hook tests before finishing Codex adapter changes." --type project_rule --pinned
 oazen memory compact
 oazen memory compact --strategy layered
 ```
@@ -182,6 +183,7 @@ oazen doctor --cwd /path/to/project
 ```
 
 `UserPromptSubmit` filters by `projectId` first, then retrieves only useful project rules, summaries, decisions, task state, issues, and TODOs within a strict context budget.
+Injected memories are reinforced by updating access metadata. Stale memories decay in ranking over time, while pinned memories keep a useful minimum decay score. Archived memories are excluded from normal hook retrieval.
 
 ---
 
