@@ -161,7 +161,10 @@ oazen memory list
 oazen memory show <memory-id>
 oazen memory add "Always run focused hook tests before finishing Codex adapter changes." --type project_rule
 oazen memory compact
+oazen memory compact --strategy layered
 ```
+
+Layered compaction keeps stable rules and durable decisions active, folds older task summaries into a working summary, marks the newest task summary as `latest-turn`, and archives duplicate or low-value records. Archived records remain inspectable in the memory file but are excluded from normal hook retrieval.
 
 Bootstrap project memory from existing local Codex memories:
 

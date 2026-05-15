@@ -70,7 +70,10 @@ oazen memory list --cwd /workspace/repo/packages/app
 oazen memory show <memory-id>
 oazen memory add "Always run adapter hook tests before finishing Codex hook changes." --cwd /workspace/repo/packages/app --type project_rule
 oazen memory compact --cwd /workspace/repo/packages/app
+oazen memory compact --cwd /workspace/repo/packages/app --strategy layered
 ```
+
+Use layered compaction when `project-memories.json` starts accumulating repeated stop summaries. It archives noisy records, keeps stable rules and durable decisions active, and normal hook retrieval ignores archived records.
 
 For first-time setup from existing local Codex memories:
 

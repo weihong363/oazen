@@ -187,9 +187,13 @@ memoryProgram
   .command("compact")
   .description("Compact project-scoped hook memories")
   .option("--cwd <path>", "project cwd")
+  .option("--strategy <strategy>", "compact strategy: sort or layered", "sort")
   .action(async (options) => {
     await runCliAction("memory-compact", async () => {
-      console.log(JSON.stringify(await compactProjectMemories(options.cwd), null, 2));
+      console.log(JSON.stringify(await compactProjectMemories({
+        cwd: options.cwd,
+        strategy: options.strategy,
+      }), null, 2));
     });
   });
 
