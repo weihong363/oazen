@@ -30,7 +30,7 @@ To keep the comparison clean, do **not** let the baseline and Oazen runs share s
 
 Use separate:
 
-* `OAZEN_HOME`
+* `OAZEN_HOME` for manual tests, or separate project `.oazen/` directories for project hooks
 * worktree or repo snapshot
 * output directories
 * hook / memory artifacts
@@ -41,7 +41,7 @@ Recommended setup:
 2. Do not install or invoke Oazen hooks for the baseline.
 3. Do not write back baseline output into the Oazen store.
 4. Run the Oazen version in a separate workspace or separate worktree.
-5. Give Oazen its own `OAZEN_HOME` so its memory store is isolated.
+5. Give Oazen hooks a separate project workspace so each run gets its own `<project>/.oazen` store.
 
 If you want the cleanest possible comparison, reset the repo state before each run and keep the task prompt identical.
 
@@ -69,7 +69,6 @@ baseline.log
 
 ```bash
 # Use a different state directory from baseline
-export OAZEN_HOME=/tmp/oazen-ab-oazen
 cd <project>
 oazen install codex --scope project
 echo '{}' | oazen hook codex session-start

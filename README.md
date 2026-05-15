@@ -106,6 +106,7 @@ echo '{}' | oazen hook codex session-start
 ```
 
 The command prints valid JSON and exits `0`. If Oazen fails internally, it returns a minimal fail-open response so Codex can continue.
+Hook metadata includes retrieval diagnostics such as `projectId`, `memoryFilePath`, `recordsLoaded`, `projectRecordsLoaded`, `recordsRetrieved`, `injectedContextChars`, and `skipReason`.
 
 Disable project hooks:
 
@@ -126,7 +127,19 @@ Oazen resolves project identity from:
 * Git repo root
 * absolute project path fallback
 
-Hook memory is stored locally under `~/.oazen/data/project-memories.json` by default. Set `OAZEN_HOME`, `OAZEN_DATA_DIR`, or `OAZEN_PROJECT_MEMORY_FILE` to override the location.
+Project-scoped Codex hooks call the current Oazen CLI entrypoint by absolute Node path and store memory under the project by default:
+
+```text
+<project>/.oazen/data/project-memories.json
+```
+
+User-scoped hooks and direct CLI commands without an override use:
+
+```text
+~/.oazen/data/project-memories.json
+```
+
+Set `OAZEN_HOME`, `OAZEN_DATA_DIR`, or `OAZEN_PROJECT_MEMORY_FILE` to override the location.
 
 Memory records include:
 
@@ -147,6 +160,12 @@ oazen memory list
 oazen memory show <memory-id>
 oazen memory add "Always run focused hook tests before finishing Codex adapter changes." --type project_rule
 oazen memory compact
+```
+
+Debug the current project memory runtime:
+
+```bash
+oazen doctor --cwd /path/to/project
 ```
 
 `UserPromptSubmit` filters by `projectId` first, then retrieves only useful project rules, summaries, decisions, task state, issues, and TODOs within a strict context budget.

@@ -70,6 +70,10 @@ temp/
 test/fixtures/benchmark-reports/
 test/fixtures/private/
 
+# Local Oazen/Codex hook runtime state
+.oazen/
+.codex/
+
 # OS generated files
 Thumbs.db
 ehthumbs.db

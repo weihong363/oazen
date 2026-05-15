@@ -59,7 +59,7 @@ oazen uninstall codex --scope project
 
 ## Generated Hook Entries
 
-Project install generates these active events:
+Project install generates these active events. The real generated commands include `OAZEN_HOME=<project>/.oazen` and call the current Oazen CLI entrypoint with an absolute Node path, so hook memory and logs stay inside the project workspace and do not depend on `oazen` being available in Codex's `PATH`.
 
 ```json
 {
@@ -70,7 +70,7 @@ Project install generates these active events:
         "hooks": [
           {
             "type": "command",
-            "command": "oazen hook codex session-start",
+            "command": "OAZEN_HOME='<project>/.oazen' '<node>' '<oazen>/dist/index.js' hook codex session-start",
             "timeout": 10,
             "statusMessage": "Loading Oazen project memory"
           }
@@ -82,7 +82,7 @@ Project install generates these active events:
         "hooks": [
           {
             "type": "command",
-            "command": "oazen hook codex user-prompt-submit",
+            "command": "OAZEN_HOME='<project>/.oazen' '<node>' '<oazen>/dist/index.js' hook codex user-prompt-submit",
             "timeout": 10,
             "statusMessage": "Retrieving Oazen context"
           }
@@ -94,7 +94,7 @@ Project install generates these active events:
         "hooks": [
           {
             "type": "command",
-            "command": "oazen hook codex stop",
+            "command": "OAZEN_HOME='<project>/.oazen' '<node>' '<oazen>/dist/index.js' hook codex stop",
             "timeout": 30,
             "statusMessage": "Updating Oazen memory"
           }
@@ -142,12 +142,18 @@ Expected shape:
   "continue": true,
   "decision": "none",
   "metadata": {
-    "projectId": "project_..."
+    "projectId": "project_...",
+    "memoryFilePath": "/path/to/project/.oazen/data/project-memories.json",
+    "recordsLoaded": 12,
+    "projectRecordsLoaded": 7,
+    "recordsRetrieved": 2,
+    "injectedContextChars": 640
   }
 }
 ```
 
 If useful context is found, the output includes `additionalContext`.
+If context is skipped, `metadata.skipReason` explains why, for example `memory_file_empty_or_missing`, `no_project_records`, or `no_relevant_project_memory`.
 
 ---
 
@@ -182,6 +188,7 @@ Behavior:
 - filters by `projectId` before ranking
 - injects project rules and only relevant prompt-matched memories
 - avoids repeating unrelated project state every turn
+- returns quiet diagnostics in `metadata` so retrieval can be debugged without noisy Codex-visible text
 
 ### Stop
 
@@ -257,7 +264,13 @@ This is the primary guard against cross-project memory pollution.
 
 ## Local Memory Store
 
-Hook memory is stored locally under:
+Project-scoped hook memory is stored locally under:
+
+```text
+<project>/.oazen/data/project-memories.json
+```
+
+User-scoped hooks and direct CLI commands without overrides use:
 
 ```text
 ~/.oazen/data/project-memories.json
@@ -303,7 +316,13 @@ Default behavior:
 - local logs only
 - obvious secrets redacted from logs
 
-Logs are written to:
+Project-scoped hook logs are written to:
+
+```text
+<project>/.oazen/logs/oazen.log
+```
+
+User-scoped hooks and direct CLI commands without overrides write logs to:
 
 ```text
 ~/.oazen/logs/oazen.log
@@ -314,6 +333,11 @@ Override with:
 ```bash
 OAZEN_LOG_FILE=/path/to/oazen.log
 ```
+
+Each log line includes:
+
+- `timestamp`: local timestamp with offset
+- `timeZone`: detected IANA time zone, such as `Asia/Shanghai`
 
 ---
 

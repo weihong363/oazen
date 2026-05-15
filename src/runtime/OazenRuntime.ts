@@ -15,6 +15,15 @@ type RuntimeOptions = {
   memoryRetriever?: MemoryRetriever;
 };
 
+type RetrievalDiagnostics = {
+  memoryFilePath: string;
+  recordsLoaded: number;
+  projectRecordsLoaded: number;
+  recordsRetrieved: number;
+  injectedContextChars: number;
+  skipReason?: string;
+};
+
 function formatMemoryLine(record: RetrievedMemory): string {
   return `- ${record.content}`;
 }
@@ -58,6 +67,24 @@ function hookResult(additionalContext?: string, metadata: Record<string, unknown
   };
 }
 
+function buildRetrievalMetadata(
+  project: { projectId: string; workspaceName: string; currentBranch?: string },
+  diagnostics: RetrievalDiagnostics
+): Record<string, unknown> {
+  return {
+    projectId: project.projectId,
+    projectName: project.workspaceName,
+    projectBranch: project.currentBranch ?? "unknown",
+    memoryFilePath: diagnostics.memoryFilePath,
+    recordsLoaded: diagnostics.recordsLoaded,
+    projectRecordsLoaded: diagnostics.projectRecordsLoaded,
+    recordsRetrieved: diagnostics.recordsRetrieved,
+    retrieved: diagnostics.recordsRetrieved,
+    injectedContextChars: diagnostics.injectedContextChars,
+    skipReason: diagnostics.skipReason,
+  };
+}
+
 export class OazenRuntime {
   private readonly projectResolver: ProjectResolver;
   private readonly memoryStore: MemoryStore;
@@ -72,18 +99,24 @@ export class OazenRuntime {
   async handleSessionStart(event: NormalizedHookEvent): Promise<HookResult> {
     return this.withFailOpen(event, async () => {
       const project = this.projectResolver.resolve(event.cwd);
-      const memories = await this.memoryRetriever.retrieve(
+      const retrieval = await this.memoryRetriever.retrieveWithDiagnostics(
         project.projectId,
         "project_summary project_rule decision task_summary known_issue todo user_preference",
         SESSION_CONTEXT_BUDGET
       );
+      const memories = retrieval.memories;
       await this.memoryStore.touch(memories.map((memory) => memory.id));
       const additionalContext = memories.length > 0
         ? formatProjectContext(project.workspaceName, project.currentBranch, memories)
         : undefined;
+      const diagnostics: RetrievalDiagnostics = {
+        ...retrieval.diagnostics,
+        injectedContextChars: additionalContext?.length ?? 0,
+        skipReason: additionalContext ? undefined : this.getSkipReason(retrieval.diagnostics),
+      };
 
-      await this.logSuccess(event, project.projectId, memories.length, 0, Boolean(additionalContext));
-      return hookResult(additionalContext, { projectId: project.projectId, retrieved: memories.length });
+      await this.logSuccess(event, project, memories.length, 0, Boolean(additionalContext), diagnostics);
+      return hookResult(additionalContext, buildRetrievalMetadata(project, diagnostics));
     });
   }
 
@@ -91,14 +124,20 @@ export class OazenRuntime {
     return this.withFailOpen(event, async () => {
       const project = this.projectResolver.resolve(event.cwd);
       const query = event.userPrompt?.trim() || "current user prompt";
-      const memories = await this.memoryRetriever.retrieve(project.projectId, query, PROMPT_CONTEXT_BUDGET);
+      const retrieval = await this.memoryRetriever.retrieveWithDiagnostics(project.projectId, query, PROMPT_CONTEXT_BUDGET);
+      const memories = retrieval.memories;
       await this.memoryStore.touch(memories.map((memory) => memory.id));
       const additionalContext = memories.length > 0
         ? formatProjectContext(project.workspaceName, project.currentBranch, memories)
         : undefined;
+      const diagnostics: RetrievalDiagnostics = {
+        ...retrieval.diagnostics,
+        injectedContextChars: additionalContext?.length ?? 0,
+        skipReason: additionalContext ? undefined : this.getSkipReason(retrieval.diagnostics),
+      };
 
-      await this.logSuccess(event, project.projectId, memories.length, 0, Boolean(additionalContext));
-      return hookResult(additionalContext, { projectId: project.projectId, retrieved: memories.length });
+      await this.logSuccess(event, project, memories.length, 0, Boolean(additionalContext), diagnostics);
+      return hookResult(additionalContext, buildRetrievalMetadata(project, diagnostics));
     });
   }
 
@@ -114,8 +153,13 @@ export class OazenRuntime {
         if (result.created) written += 1;
       }
 
-      await this.logSuccess(event, project.projectId, 0, written, false);
-      return hookResult(undefined, { projectId: project.projectId, written });
+      await this.logSuccess(event, project, 0, written, false);
+      return hookResult(undefined, {
+        projectId: project.projectId,
+        projectName: project.workspaceName,
+        projectBranch: project.currentBranch ?? "unknown",
+        written,
+      });
     });
   }
 
@@ -164,18 +208,29 @@ export class OazenRuntime {
 
   private async logSuccess(
     event: NormalizedHookEvent,
-    projectId: string,
+    project: { projectId: string; workspaceName: string; currentBranch?: string },
     retrieved: number,
     written: number,
-    injected: boolean
+    injected: boolean,
+    diagnostics: Partial<RetrievalDiagnostics> = {}
   ): Promise<void> {
     await logOazenEvent({
       event: event.name,
       adapter: event.adapter,
-      projectId,
+      projectId: project.projectId,
+      projectName: project.workspaceName,
+      projectBranch: project.currentBranch ?? "unknown",
       retrieved,
       written,
       injected,
+      ...diagnostics,
     }).catch(() => undefined);
+  }
+
+  private getSkipReason(diagnostics: Pick<RetrievalDiagnostics, "recordsLoaded" | "projectRecordsLoaded" | "recordsRetrieved">): string {
+    if (diagnostics.recordsLoaded === 0) return "memory_file_empty_or_missing";
+    if (diagnostics.projectRecordsLoaded === 0) return "no_project_records";
+    if (diagnostics.recordsRetrieved === 0) return "no_relevant_project_memory";
+    return "context_budget_exhausted";
   }
 }

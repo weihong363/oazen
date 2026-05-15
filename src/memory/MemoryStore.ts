@@ -54,6 +54,10 @@ function isSimilarRecord(left: MemoryRecord, right: MemoryRecord): boolean {
 export class MemoryStore {
   constructor(private readonly filePath = getProjectMemoryFilePath()) {}
 
+  getFilePath(): string {
+    return this.filePath;
+  }
+
   async list(): Promise<MemoryRecord[]> {
     try {
       const raw = await fs.readFile(this.filePath, "utf-8");

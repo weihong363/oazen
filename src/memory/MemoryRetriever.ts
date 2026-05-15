@@ -6,6 +6,17 @@ export type RetrievedMemory = MemoryRecord & {
   score: number;
 };
 
+export type MemoryRetrievalResult = {
+  memories: RetrievedMemory[];
+  diagnostics: {
+    memoryFilePath: string;
+    recordsLoaded: number;
+    projectRecordsLoaded: number;
+    recordsRetrieved: number;
+    budgetChars: number;
+  };
+};
+
 const TYPE_PRIORITY: Record<ProjectMemoryType, number> = {
   project_summary: 9,
   project_rule: 8,
@@ -51,8 +62,17 @@ export class MemoryRetriever {
   constructor(private readonly store = new MemoryStore()) {}
 
   async retrieve(projectId: string, query: string, maxChars: number): Promise<RetrievedMemory[]> {
-    const memories = await this.store.listByProject(projectId);
-    const ranked = memories
+    return (await this.retrieveWithDiagnostics(projectId, query, maxChars)).memories;
+  }
+
+  async retrieveWithDiagnostics(
+    projectId: string,
+    query: string,
+    maxChars: number
+  ): Promise<MemoryRetrievalResult> {
+    const allMemories = await this.store.list();
+    const projectMemories = allMemories.filter((record) => record.projectId === projectId);
+    const ranked = projectMemories
       .map((record) => ({ ...record, ...scoreMemory(record, query) }))
       .filter((record) => record.matches > 0 || isAlwaysUseful(record))
       .sort((left, right) => right.score - left.score || right.updatedAt - left.updatedAt);
@@ -62,6 +82,17 @@ export class MemoryRetriever {
       maxChars
     );
     const allowedIds = new Set(lines.map((line) => line.split("\t")[0]));
-    return ranked.filter((record) => allowedIds.has(record.id));
+    const memories = ranked.filter((record) => allowedIds.has(record.id));
+
+    return {
+      memories,
+      diagnostics: {
+        memoryFilePath: this.store.getFilePath(),
+        recordsLoaded: allMemories.length,
+        projectRecordsLoaded: projectMemories.length,
+        recordsRetrieved: memories.length,
+        budgetChars: maxChars,
+      },
+    };
   }
 }
