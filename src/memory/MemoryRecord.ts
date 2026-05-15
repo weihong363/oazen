@@ -23,6 +23,13 @@ export type MemoryProvenance = {
   excerptHash: string;
 };
 
+export type MemoryLayer =
+  | "latest-turn"
+  | "working-summary"
+  | "stable-rules"
+  | "durable-decisions"
+  | "archive";
+
 export type MemoryRecord = {
   id: string;
   projectId: string;
@@ -38,4 +45,7 @@ export type MemoryRecord = {
   branch?: string;
   ttlDays?: number;
   provenance?: MemoryProvenance;
+  layer?: MemoryLayer;
+  archivedAt?: number;
+  archiveReason?: string;
 };

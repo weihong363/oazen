@@ -1,4 +1,5 @@
 import { MemoryStore } from "../memory/MemoryStore";
+import { compactProjectMemoriesLayered } from "../memory/MemoryCompactor";
 import { ProjectMemoryType } from "../memory/MemoryRecord";
 import { ProjectResolver } from "../project/ProjectResolver";
 
@@ -79,21 +80,40 @@ export async function addProjectMemory(
   };
 }
 
-export async function compactProjectMemories(cwd = process.cwd()): Promise<Record<string, unknown>> {
+type CompactOptions = {
+  cwd?: string;
+  strategy?: string;
+};
+
+function parseCompactStrategy(strategy = "sort"): "sort" | "layered" {
+  if (strategy === "sort" || strategy === "layered") return strategy;
+  throw new Error(`Unsupported memory compact strategy: ${strategy}`);
+}
+
+export async function compactProjectMemories(options: CompactOptions = {}): Promise<Record<string, unknown>> {
   const store = new MemoryStore();
-  const project = new ProjectResolver().resolve(cwd);
+  const project = new ProjectResolver().resolve(options.cwd);
   const before = await store.list();
   const projectRecords = before.filter((record) => record.projectId === project.projectId);
   const otherRecords = before.filter((record) => record.projectId !== project.projectId);
-  const compacted = projectRecords.sort((left, right) => right.updatedAt - left.updatedAt);
+  const strategy = parseCompactStrategy(options.strategy);
+  const compactedResult = strategy === "layered"
+    ? compactProjectMemoriesLayered(projectRecords, project)
+    : {
+        records: projectRecords.sort((left, right) => right.updatedAt - left.updatedAt),
+        stats: undefined,
+      };
+  const compacted = compactedResult.records;
   await store.save([...otherRecords, ...compacted]);
 
   return {
     version: "1",
     kind: "project_memory_mutation",
     action: "compact",
+    strategy,
     projectId: project.projectId,
     before: projectRecords.length,
     after: compacted.length,
+    stats: compactedResult.stats,
   };
 }

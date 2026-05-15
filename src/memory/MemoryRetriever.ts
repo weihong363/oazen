@@ -72,7 +72,8 @@ export class MemoryRetriever {
   ): Promise<MemoryRetrievalResult> {
     const allMemories = await this.store.list();
     const projectMemories = allMemories.filter((record) => record.projectId === projectId);
-    const ranked = projectMemories
+    const activeProjectMemories = projectMemories.filter((record) => record.layer !== "archive");
+    const ranked = activeProjectMemories
       .map((record) => ({ ...record, ...scoreMemory(record, query) }))
       .filter((record) => record.matches > 0 || isAlwaysUseful(record))
       .sort((left, right) => right.score - left.score || right.updatedAt - left.updatedAt);
@@ -89,7 +90,7 @@ export class MemoryRetriever {
       diagnostics: {
         memoryFilePath: this.store.getFilePath(),
         recordsLoaded: allMemories.length,
-        projectRecordsLoaded: projectMemories.length,
+        projectRecordsLoaded: activeProjectMemories.length,
         recordsRetrieved: memories.length,
         budgetChars: maxChars,
       },

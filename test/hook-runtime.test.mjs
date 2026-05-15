@@ -37,6 +37,22 @@ function makeProject(root, name) {
   return project;
 }
 
+function makeRecord(id, projectId, type, content, updatedAt, confidence) {
+  return {
+    id,
+    projectId,
+    type,
+    content,
+    source: "manual",
+    confidence,
+    createdAt: updatedAt,
+    updatedAt,
+    lastAccessedAt: updatedAt,
+    tags: [],
+    relatedFiles: [],
+  };
+}
+
 function hook(event, payload, env) {
   return JSON.parse(
     runCli(["hook", "codex", event], {
@@ -215,6 +231,57 @@ test("memory commands isolate two projects and deduplicate similar records", () 
   assert.equal(listA.count, 1);
   assert.equal(listB.count, 1);
   assert.notEqual(listA.records[0].projectId, listB.records[0].projectId);
+
+  rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("layered memory compact preserves durable layers and archives noisy records", () => {
+  const tempRoot = mkdtempSync(path.join(tmpdir(), "oazen-layered-"));
+  const env = { OAZEN_HOME: path.join(tempRoot, "home") };
+  const projectA = makeProject(tempRoot, "project-a");
+  const projectB = makeProject(tempRoot, "project-b");
+  const resolver = new ProjectResolver();
+  const projectAId = resolver.resolve(projectA).projectId;
+  const projectBId = resolver.resolve(projectB).projectId;
+  const now = Date.now();
+  const memoryFile = path.join(env.OAZEN_HOME, "data", "project-memories.json");
+
+  mkdirSync(path.dirname(memoryFile), { recursive: true });
+  writeFileSync(
+    memoryFile,
+    JSON.stringify({
+      version: "1",
+      records: [
+        makeRecord("a-rule-old", projectAId, "project_rule", "Always run layered compaction tests before release.", now - 5000, 0.7),
+        makeRecord("a-rule-new", projectAId, "project_rule", "Always run layered compaction tests before release.", now - 1000, 0.8),
+        makeRecord("a-decision", projectAId, "decision", "We decided project memories stay local-first.", now - 900, 0.8),
+        makeRecord("a-task-old-1", projectAId, "task_summary", "Older task summary about compacting repeated stop records.", now - 4000, 0.6),
+        makeRecord("a-task-old-2", projectAId, "task_summary", "Older task summary about preserving durable decisions.", now - 3000, 0.6),
+        makeRecord("a-task-latest", projectAId, "task_summary", "Latest turn implemented layered memory compaction.", now - 100, 0.6),
+        makeRecord("a-noise", projectAId, "file_note", "obsolete-marker should stay out of retrieved context.", now - 50, 0.3),
+        makeRecord("b-task", projectBId, "task_summary", "Project B memory must not be compacted from Project A.", now - 100, 0.6),
+      ],
+    }),
+    "utf-8"
+  );
+
+  const compact = JSON.parse(
+    runCli(["memory", "compact", "--cwd", projectA, "--strategy", "layered"], { env }).stdout
+  );
+  const listA = JSON.parse(runCli(["memory", "list", "--cwd", projectA], { env }).stdout);
+  const listB = JSON.parse(runCli(["memory", "list", "--cwd", projectB], { env }).stdout);
+  const prompt = hook("user-prompt-submit", { cwd: projectA, prompt: "obsolete-marker" }, env);
+
+  assert.equal(compact.strategy, "layered");
+  assert.equal(compact.stats.afterActive < compact.stats.beforeActive, true);
+  assert.ok(listA.records.some((record) => record.layer === "stable-rules" && record.type === "project_rule"));
+  assert.ok(listA.records.some((record) => record.layer === "durable-decisions" && record.type === "decision"));
+  assert.ok(listA.records.some((record) => record.layer === "latest-turn"));
+  assert.ok(listA.records.some((record) => record.layer === "working-summary"));
+  assert.ok(listA.records.some((record) => record.layer === "archive" && record.archiveReason === "low_value"));
+  assert.equal(listB.records.length, 1);
+  assert.equal(listB.records[0].layer, undefined);
+  assert.doesNotMatch(prompt.additionalContext ?? "", /obsolete-marker/);
 
   rmSync(tempRoot, { recursive: true, force: true });
 });

@@ -306,7 +306,10 @@ oazen memory list
 oazen memory show <id>
 oazen memory add "<content>" --type project_rule
 oazen memory compact
+oazen memory compact --strategy layered
 ```
+
+Layered compaction is project-scoped. It preserves `stable-rules` and `durable-decisions`, creates a `working-summary` from older task summaries, keeps the newest task state as `latest-turn`, and moves duplicate or low-value records to `archive`. Normal retrieval excludes archived records.
 
 Import commands:
 

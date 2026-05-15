@@ -41,6 +41,9 @@ function normalizeRecord(input: Partial<MemoryRecord>): MemoryRecord | null {
     branch: input.branch,
     ttlDays: input.ttlDays,
     provenance: input.provenance,
+    layer: input.layer,
+    archivedAt: input.archivedAt,
+    archiveReason: input.archiveReason,
   };
 }
 
@@ -101,6 +104,9 @@ export class MemoryStore {
         relatedFiles: [...new Set([...existing.relatedFiles, ...incoming.relatedFiles])],
         branch: incoming.branch ?? existing.branch,
         provenance: incoming.provenance ?? existing.provenance,
+        layer: incoming.layer ?? existing.layer,
+        archivedAt: incoming.archivedAt ?? existing.archivedAt,
+        archiveReason: incoming.archiveReason ?? existing.archiveReason,
         updatedAt: incoming.updatedAt,
         lastAccessedAt: incoming.lastAccessedAt,
       };
