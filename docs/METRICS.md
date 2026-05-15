@@ -82,7 +82,26 @@ Measures how often memories from other projects are incorrectly recalled.
 
 ---
 
-### 2.4 Context Token Saved
+### 2.4 Memory Decay Health
+
+Measures whether retrieval is favoring useful, recently injected memories without deleting older history.
+
+**Signals**
+
+- `accessCount`: how often a record was injected
+- `lastInjectedAt`: last time the record was included in hook context
+- `decayScore`: deterministic ranking multiplier derived from age, access, type, and pinned status
+- `pinned`: keeps durable memories from decaying below a useful threshold
+
+**Target direction**
+
+- Recently useful memories should rise.
+- Stale unpinned memories should fall.
+- Archived memories should stay out of normal retrieval.
+
+---
+
+### 2.5 Context Token Saved
 
 Measures how many tokens are avoided in the final LLM prompt because Oazen filtered and compressed memory.
 
@@ -101,7 +120,7 @@ Measures how many tokens are avoided in the final LLM prompt because Oazen filte
 
 ---
 
-### 2.5 Average Context Size per Task
+### 2.6 Average Context Size per Task
 
 Measures the final amount of memory actually inserted into the prompt for each task.
 
@@ -120,7 +139,7 @@ Measures the final amount of memory actually inserted into the prompt for each t
 
 ---
 
-### 2.6 Recall-to-Context Ratio
+### 2.7 Recall-to-Context Ratio
 
 Measures how much memory is retrieved versus how much is actually passed to the model.
 
@@ -139,7 +158,7 @@ Measures how much memory is retrieved versus how much is actually passed to the 
 
 ---
 
-### 2.7 Time to Resume
+### 2.8 Time to Resume
 
 Measures how long it takes a developer to regain useful project context after switching back to a project.
 
@@ -165,7 +184,7 @@ Examples of a useful action:
 
 ---
 
-### 2.8 Rework Reduction
+### 2.9 Rework Reduction
 
 Measures how often the model or developer needs to redo work because of missing or wrong memory.
 

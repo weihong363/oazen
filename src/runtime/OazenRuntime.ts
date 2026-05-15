@@ -21,6 +21,8 @@ type RetrievalDiagnostics = {
   projectRecordsLoaded: number;
   recordsRetrieved: number;
   injectedContextChars: number;
+  decayScoreMin?: number;
+  decayScoreMax?: number;
   skipReason?: string;
 };
 
@@ -81,6 +83,8 @@ function buildRetrievalMetadata(
     recordsRetrieved: diagnostics.recordsRetrieved,
     retrieved: diagnostics.recordsRetrieved,
     injectedContextChars: diagnostics.injectedContextChars,
+    decayScoreMin: diagnostics.decayScoreMin,
+    decayScoreMax: diagnostics.decayScoreMax,
     skipReason: diagnostics.skipReason,
   };
 }

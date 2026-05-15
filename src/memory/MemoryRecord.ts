@@ -40,6 +40,10 @@ export type MemoryRecord = {
   createdAt: number;
   updatedAt: number;
   lastAccessedAt: number;
+  accessCount?: number;
+  lastInjectedAt?: number;
+  decayScore?: number;
+  pinned?: boolean;
   tags: string[];
   relatedFiles: string[];
   branch?: string;

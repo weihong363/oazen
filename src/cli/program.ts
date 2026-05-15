@@ -177,6 +177,7 @@ memoryProgram
   .option("--cwd <path>", "project cwd")
   .option("--type <type>", "project memory type", "file_note")
   .option("--tags <tags>", "comma-separated tags")
+  .option("--pinned", "prevent this memory from decaying below the useful threshold")
   .action(async (content, options) => {
     await runCliAction("memory-add", async () => {
       console.log(JSON.stringify(await addProjectMemory(content, options), null, 2));

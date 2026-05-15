@@ -182,10 +182,16 @@ If no Git repo exists, cwd-based project identity is acceptable.
 - `createdAt`
 - `updatedAt`
 - `lastAccessedAt`
+- `accessCount`
+- `lastInjectedAt`
+- `decayScore`
+- `pinned`
 - `tags`
 - `relatedFiles`
 - `branch`
-- optional TTL or decay metadata
+- optional TTL, layer, provenance, or archive metadata
+
+Injected records are reinforced by updating access metadata. Retrieval applies deterministic decay scoring so stale low-access records fall in ranking, pinned records keep a useful minimum score, and archived records stay out of normal context injection.
 
 ### 7.3 Storage
 
@@ -304,7 +310,7 @@ Memory commands:
 ```bash
 oazen memory list
 oazen memory show <id>
-oazen memory add "<content>" --type project_rule
+oazen memory add "<content>" --type project_rule --pinned
 oazen memory compact
 oazen memory compact --strategy layered
 ```
