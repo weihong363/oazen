@@ -40,6 +40,7 @@ function normalizeRecord(input: Partial<MemoryRecord>): MemoryRecord | null {
     relatedFiles: input.relatedFiles ?? [],
     branch: input.branch,
     ttlDays: input.ttlDays,
+    provenance: input.provenance,
   };
 }
 
@@ -99,6 +100,7 @@ export class MemoryStore {
         tags: [...new Set([...existing.tags, ...incoming.tags])],
         relatedFiles: [...new Set([...existing.relatedFiles, ...incoming.relatedFiles])],
         branch: incoming.branch ?? existing.branch,
+        provenance: incoming.provenance ?? existing.provenance,
         updatedAt: incoming.updatedAt,
         lastAccessedAt: incoming.lastAccessedAt,
       };

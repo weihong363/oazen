@@ -152,6 +152,7 @@ Memory records include:
 * tags
 * related files
 * branch
+* optional provenance for imported memories
 
 Inspect and edit hook memory:
 
@@ -161,6 +162,15 @@ oazen memory show <memory-id>
 oazen memory add "Always run focused hook tests before finishing Codex adapter changes." --type project_rule
 oazen memory compact
 ```
+
+Bootstrap project memory from existing local Codex memories:
+
+```bash
+oazen import codex --scope project --dry-run
+oazen import codex --scope project
+```
+
+The import path filters candidates to the current project, writes `source: "codex_import"` plus provenance metadata, and deduplicates against existing `.oazen/data/project-memories.json`. It does not persist raw full transcripts.
 
 Debug the current project memory runtime:
 

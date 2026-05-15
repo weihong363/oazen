@@ -308,6 +308,15 @@ oazen memory add "<content>" --type project_rule
 oazen memory compact
 ```
 
+Import commands:
+
+```bash
+oazen import codex --scope project --dry-run
+oazen import codex --scope project
+```
+
+Codex import is local-only. It reads existing Codex memory files, keeps only current-project candidates, stores compressed Oazen records with provenance, and deduplicates against the project memory store.
+
 Debug and legacy commands remain available:
 
 ```bash
