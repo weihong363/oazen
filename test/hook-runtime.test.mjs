@@ -84,6 +84,14 @@ test("Codex hooks fail open and write compact project-scoped memory", () => {
   assert.match(promptOutput.additionalContext, /OAZEN PROJECT CONTEXT/);
   assert.match(promptOutput.additionalContext, /hook regression test/);
   assert.doesNotMatch(promptOutput.additionalContext, /unrelated workspace/);
+  assert.equal(promptOutput.metadata.projectName, "project-a");
+  assert.equal("projectBranch" in promptOutput.metadata, true);
+  assert.equal(promptOutput.metadata.recordsLoaded >= 1, true);
+  assert.equal(promptOutput.metadata.projectRecordsLoaded >= 1, true);
+  assert.equal(promptOutput.metadata.recordsRetrieved >= 1, true);
+  assert.equal(promptOutput.metadata.injectedContextChars, promptOutput.additionalContext.length);
+  assert.match(promptOutput.metadata.memoryFilePath, /project-memories\.json$/);
+  assert.equal(promptOutput.metadata.skipReason, undefined);
 
   const projectBOutput = hook(
     "user-prompt-submit",
@@ -91,6 +99,38 @@ test("Codex hooks fail open and write compact project-scoped memory", () => {
     env
   );
   assert.equal(projectBOutput.additionalContext, undefined);
+  assert.equal(projectBOutput.metadata.projectName, "project-b");
+  assert.equal("projectBranch" in projectBOutput.metadata, true);
+  assert.equal(projectBOutput.metadata.recordsLoaded >= 1, true);
+  assert.equal(projectBOutput.metadata.projectRecordsLoaded, 0);
+  assert.equal(projectBOutput.metadata.recordsRetrieved, 0);
+  assert.equal(projectBOutput.metadata.injectedContextChars, 0);
+  assert.equal(projectBOutput.metadata.skipReason, "no_project_records");
+
+  rmSync(tempRoot, { recursive: true, force: true });
+});
+
+test("doctor reports project memory diagnostics", () => {
+  const tempRoot = mkdtempSync(path.join(tmpdir(), "oazen-doctor-"));
+  const env = { OAZEN_HOME: path.join(tempRoot, "home") };
+  const project = makeProject(tempRoot, "project");
+
+  hook(
+    "stop",
+    {
+      cwd: project,
+      transcript: "We decided to expose doctor diagnostics for project memory retrieval.",
+    },
+    env
+  );
+
+  const doctor = JSON.parse(runCli(["doctor", "--cwd", project], { env }).stdout);
+  assert.equal(doctor.kind, "doctor_result");
+  assert.equal(typeof doctor.project.projectId, "string");
+  assert.match(doctor.memoryFilePath, /project-memories\.json$/);
+  assert.equal(doctor.recordsLoaded >= 1, true);
+  assert.equal(doctor.projectRecordsLoaded >= 1, true);
+  assert.equal(typeof doctor.projectBranchCounts, "object");
 
   rmSync(tempRoot, { recursive: true, force: true });
 });
@@ -114,6 +154,10 @@ test("install codex creates hooks config with backup and uninstall removes manag
   assert.ok(hooksConfig.hooks.UserPromptSubmit);
   assert.ok(hooksConfig.hooks.Stop);
   assert.ok(hooksConfig.hooks.CustomEvent);
+  const stopCommand = hooksConfig.hooks.Stop[0].hooks[0].command;
+  assert.match(stopCommand, new RegExp(`OAZEN_HOME='${path.join(realpathSync(project), ".oazen")}'`));
+  assert.match(stopCommand, /node'? '?/);
+  assert.match(stopCommand, /hook codex stop$/);
 
   const uninstall = JSON.parse(runCli(["uninstall", "codex", "--scope", "project"], { cwd: project }).stdout);
   assert.deepEqual(uninstall.removedEvents, ["SessionStart", "UserPromptSubmit", "Stop"]);

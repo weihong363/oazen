@@ -9,6 +9,22 @@ type HooksJson = {
 
 const MANAGED_EVENTS = ["SessionStart", "UserPromptSubmit", "Stop"] as const;
 
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+function getCliCommand(): string {
+  const entryPoint = process.argv[1] ? path.resolve(process.argv[1]) : path.resolve("dist", "index.js");
+  return `${shellQuote(process.execPath)} ${shellQuote(entryPoint)}`;
+}
+
+function hookCommand(cwd: string, scope: CodexHookScope, eventName: string): string {
+  const baseCommand = `${getCliCommand()} hook codex ${eventName}`;
+  if (scope === "user") return baseCommand;
+
+  return `OAZEN_HOME=${shellQuote(path.join(path.resolve(cwd), ".oazen"))} ${baseCommand}`;
+}
+
 function hookEntry(command: string, timeout: number, statusMessage: string): Record<string, unknown> {
   return {
     hooks: [
@@ -22,19 +38,19 @@ function hookEntry(command: string, timeout: number, statusMessage: string): Rec
   };
 }
 
-export function buildCodexHooksConfig(): HooksJson {
+export function buildCodexHooksConfig(cwd = process.cwd(), scope: CodexHookScope = "user"): HooksJson {
   return {
     hooks: {
       SessionStart: [
         {
           matcher: "startup|resume|clear",
-          ...hookEntry("oazen hook codex session-start", 10, "Loading Oazen project memory"),
+          ...hookEntry(hookCommand(cwd, scope, "session-start"), 10, "Loading Oazen project memory"),
         },
       ],
       UserPromptSubmit: [
-        hookEntry("oazen hook codex user-prompt-submit", 10, "Retrieving Oazen context"),
+        hookEntry(hookCommand(cwd, scope, "user-prompt-submit"), 10, "Retrieving Oazen context"),
       ],
-      Stop: [hookEntry("oazen hook codex stop", 30, "Updating Oazen memory")],
+      Stop: [hookEntry(hookCommand(cwd, scope, "stop"), 30, "Updating Oazen memory")],
     },
   };
 }
@@ -62,7 +78,7 @@ export async function installCodexHooks(
 ): Promise<{ path: string; backedUp: boolean }> {
   const filePath = configPath(cwd, scope);
   const existing = await readExisting(filePath);
-  const generated = buildCodexHooksConfig();
+  const generated = buildCodexHooksConfig(cwd, scope);
   const merged: HooksJson = {
     ...existing,
     hooks: {

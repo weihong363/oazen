@@ -191,11 +191,22 @@ If no Git repo exists, cwd-based project identity is acceptable.
 
 MVP storage can be JSON. SQLite is preferred later if concurrency or query complexity demands it.
 
-Default hook memory location:
+Project-scoped Codex hook memory location:
+
+```text
+<project>/.oazen/data/project-memories.json
+```
+
+User-scoped hooks and direct CLI commands without overrides use:
 
 ```text
 ~/.oazen/data/project-memories.json
 ```
+
+Log records should use the user's local wall-clock time:
+
+- `timestamp`: local timestamp with offset
+- `timeZone`: IANA time zone from the runtime environment
 
 Raw full transcripts should not be stored by default.
 
@@ -215,6 +226,7 @@ Raw full transcripts should not be stored by default.
 - resolve current project
 - retrieve relevant project memories
 - avoid injecting unrelated or excessive context
+- return quiet diagnostics in hook metadata: project ID, memory file path, loaded count, retrieved count, injected chars, and skip reason
 
 ### 8.3 Stop
 

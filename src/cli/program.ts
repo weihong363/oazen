@@ -17,6 +17,16 @@ import { runCodexHookCommand, parseCodexHookName } from "./hookCommands";
 import { installCodex, parseInstallScope, uninstallCodex } from "./installCommands";
 import { addProjectMemory, compactProjectMemories, listProjectMemories, showProjectMemory } from "./memoryCommands";
 import { loadMemories } from "../storage/memory-store";
+import { ProjectResolver } from "../project/ProjectResolver";
+import { MemoryStore } from "../memory/MemoryStore";
+
+function countByBranch(records: Array<{ branch?: string }>): Record<string, number> {
+  return records.reduce<Record<string, number>>((counts, record) => {
+    const branch = record.branch ?? "unknown";
+    counts[branch] = (counts[branch] ?? 0) + 1;
+    return counts;
+  }, {});
+}
 
 const program = new Command();
 
@@ -110,12 +120,22 @@ uninstallProgram
 program
   .command("doctor")
   .description("Check Oazen hook runtime basics")
-  .action(async () => {
+  .option("--cwd <path>", "project cwd")
+  .action(async (options) => {
     await runCliAction("doctor", async () => {
+      const project = new ProjectResolver().resolve(options.cwd);
+      const memoryStore = new MemoryStore();
+      const allRecords = await memoryStore.list();
+      const projectRecords = allRecords.filter((record) => record.projectId === project.projectId);
       console.log(JSON.stringify({
         version: "1",
         kind: "doctor_result",
-        cwd: process.cwd(),
+        cwd: project.cwd,
+        project,
+        memoryFilePath: memoryStore.getFilePath(),
+        recordsLoaded: allRecords.length,
+        projectRecordsLoaded: projectRecords.length,
+        projectBranchCounts: countByBranch(projectRecords),
         node: process.version,
         strictMode: false,
         network: "disabled-by-default",
