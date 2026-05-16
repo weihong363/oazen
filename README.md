@@ -141,6 +141,8 @@ User-scoped hooks and direct CLI commands without an override use:
 
 Set `OAZEN_HOME`, `OAZEN_DATA_DIR`, or `OAZEN_PROJECT_MEMORY_FILE` to override the location.
 
+Hook logs stay at `<project>/.oazen/logs/oazen.log` for project installs. Older logs rotate to date-suffixed archive files such as `oazen.2026-05-16T00-00-00-000Z.log`. Set `OAZEN_LOG_MAX_BYTES` and `OAZEN_LOG_RETENTION_FILES` to tune local rotation.
+
 Memory records include:
 
 * `projectId`

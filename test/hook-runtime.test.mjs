@@ -154,6 +154,27 @@ test("doctor reports project memory diagnostics", () => {
   rmSync(tempRoot, { recursive: true, force: true });
 });
 
+test("Codex hooks continue when local logging fails", () => {
+  const tempRoot = mkdtempSync(path.join(tmpdir(), "oazen-log-fail-"));
+  const project = makeProject(tempRoot, "project");
+  const badLogPath = path.join(tempRoot, "bad-log-target");
+  mkdirSync(badLogPath, { recursive: true });
+
+  const output = hook(
+    "session-start",
+    { cwd: project },
+    {
+      OAZEN_HOME: path.join(tempRoot, "home"),
+      OAZEN_LOG_FILE: badLogPath,
+    }
+  );
+
+  assert.equal(output.continue, true);
+  assert.equal(output.decision, "none");
+
+  rmSync(tempRoot, { recursive: true, force: true });
+});
+
 test("install codex creates hooks config with backup and uninstall removes managed events", () => {
   const tempRoot = mkdtempSync(path.join(tmpdir(), "oazen-install-"));
   const project = makeProject(tempRoot, "project");
