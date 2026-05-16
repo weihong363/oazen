@@ -334,6 +334,15 @@ Override with:
 OAZEN_LOG_FILE=/path/to/oazen.log
 ```
 
+Oazen rotates local logs before appending when the current file exceeds the configured size. The current file remains `oazen.log`; archives use UTC date suffixes and retention keeps the newest files:
+
+```bash
+OAZEN_LOG_MAX_BYTES=1048576
+OAZEN_LOG_RETENTION_FILES=5
+```
+
+Rotation is local-only and best-effort. If rotation fails, hooks continue and Oazen still attempts to append to the current log.
+
 Each log line includes:
 
 - `timestamp`: local timestamp with offset

@@ -349,6 +349,7 @@ Default behavior:
 - no external LLM calls
 - no raw transcript persistence
 - obvious secrets redacted from logs
+- project logs rotate locally with date-suffixed archives and bounded retention
 - hook errors fail open
 
 Strict mode may later enable:
